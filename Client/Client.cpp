@@ -72,6 +72,8 @@ int main()
 
 	while (true)
 	{
+		printf("Added develop branch.");
+
 		printf("\nPress 'x' to exit or any other key to continue: ");
 		if (_getch() == 'x')
 			break;
