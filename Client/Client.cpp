@@ -19,6 +19,12 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
+struct igracInfo
+{
+	char ime[15];
+	bool prvi = false;
+};
+
 
 // TCP client that use non-blocking sockets
 int main()
@@ -69,41 +75,107 @@ int main()
 		WSACleanup();
 		return 1;
 	}
+	else
+	{
+		printf("Sacekajte da vam server posalje znak za pocetak igre!\n");
+	}
+
+	char poruka[256];
+	igracInfo igrac;
 
 	while (true)
 	{
 		//// Unos potrebnih podataka koji ce se poslati serveru
-		//printf("Unesite ime studenta: ");
-		//gets_s(student.ime, 15);
+		printf("Unesite ime igraca: ");
+		gets_s(igrac.ime, 15);
 
-		//printf("Unesite prezime studenta: ");
-		//gets_s(student.prezime, 20);
-
-		//printf("Unesite osvojene poene na testu: ");
-		//scanf("%d", &poeni);
-		//student.poeni = htons(poeni);  //obavezna funkcija htons() jer cemo slati podatak tipa short 
-		//getchar();    //pokupiti enter karakter iz bafera tastature
-
-
-		//// Slanje pripremljene poruke zapisane unutar strukture studentInfo
-		////prosledjujemo adresu promenljive student u memoriji, jer se na toj adresi nalaze podaci koje saljemo
-		////kao i velicinu te strukture (jer je to duzina poruke u bajtima)
-		//iResult = send(connectSocket, (char*)&student, (int)sizeof(studentInfo), 0);
+		iResult = send(connectSocket, (char*)&igrac, (int)sizeof(igracInfo), 0);
 
 		//// Check result of send function
-		//if (iResult == SOCKET_ERROR)
-		//{
-		//	printf("send failed with error: %d\n", WSAGetLastError());
-		//	closesocket(connectSocket);
-		//	WSACleanup();
-		//	return 1;
-		//}
+		if (iResult == SOCKET_ERROR)
+		{
+			printf("send failed with error: %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+			WSACleanup();
+			return 1;
+		}
 
-		//printf("Message successfully sent. Total bytes: %ld\n", iResult);
 
-		printf("\nPress 'x' to exit or any other key to continue: ");
-		if (_getch() == 'x')
-			break;
+
+		//slanje poruke serveru
+		while (true)
+		{
+
+			iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+
+			if (iResult > 0)	// Check if message is successfully received
+			{
+				dataBuffer[iResult] = '\0';
+
+				// Log message text
+				printf("Server sent: %s.\n", dataBuffer);
+
+
+				/*printf("\nOpseg broja: ");
+
+				gets_s(poruka);
+				iResult = send(connectSocket, (char*)&poruka, strlen(poruka), 0);
+
+				if (iResult == SOCKET_ERROR)
+				{
+					printf("send failed with error: %d\n", WSAGetLastError());
+					closesocket(connectSocket);
+					WSACleanup();
+					return 1;
+				}*/
+
+
+			}
+			else if (iResult == 0)	// Check if shutdown command is received
+			{
+				// Connection was closed successfully
+				printf("Connection with server closed.\n");
+				closesocket(connectSocket);
+				break;
+				//WSACleanup();
+				//return 0;
+			}
+			else	// There was an error during recv
+			{
+
+				printf("recv failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+				break;
+				//WSACleanup();
+				//return 1;
+			}
+			
+
+
+			/*printf("\nPress 'x' to exit or any other key to continue: ");
+
+			gets_s(poruka); 
+			iResult = send(connectSocket, (char*) &poruka, strlen(poruka), 0);
+
+			if (iResult == SOCKET_ERROR)
+			{
+				printf("send failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+				WSACleanup();
+				return 1;
+			} 
+
+			printf("\nMessage successfully sent. Total bytes: %ld\n", iResult);
+			if (_getch() == 'x')
+			{
+				break;
+			}*/
+
+
+
+		}
+		
+
 	}
 
 	// Shutdown the connection since we're done

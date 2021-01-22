@@ -1,4 +1,5 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
 #define WIN32_LEAN_AND_MEAN
 
@@ -17,11 +18,20 @@
 
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 5
+
+struct igracInfo
+{
+	char ime[15];
+	bool prvi = false;
+};
+
 
 // TCP server that use non-blocking sockets
 int main()
 {
+
+
 	// Socket used for listening for new clients 
 	SOCKET listenSocket = INVALID_SOCKET;
 
@@ -33,7 +43,7 @@ int main()
 	int iResult;
 	char dataBuffer[BUFFER_SIZE];
 
-	
+
 	// Inicijalizacija WSA biblioteke
 	WSADATA wsaData;
 
@@ -48,7 +58,7 @@ int main()
 	memset((char*)&serverAddress, 0, sizeof(serverAddress));
 	serverAddress.sin_family = AF_INET;				// IPv4
 	serverAddress.sin_addr.s_addr = INADDR_ANY;		// Use all available addresses
-	serverAddress.sin_port = htons(SERVER_PORT);	
+	serverAddress.sin_port = htons(SERVER_PORT);
 
 	// Initialize all client_socket[] to 0 so not checked
 	memset(clientSockets, 0, MAX_CLIENTS * sizeof(SOCKET));
@@ -105,11 +115,18 @@ int main()
 	// set of socket descriptors
 	// added only set for reading, as a base of project
 	fd_set readfds;
+	//fd_set writefds;
 
 	// timeout for select function
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
+
+	igracInfo *igrac;
+	int infoIgraca = 0;
+	
+
+	
 
 	while (true)
 	{
@@ -126,6 +143,8 @@ int main()
 		{
 			FD_SET(clientSockets[i], &readfds);
 		}
+
+
 
 		// wait for events on set						  &timeVal
 		int selectResult = select(0, &readfds, NULL, NULL, NULL);
@@ -174,12 +193,16 @@ int main()
 					continue;
 				}
 				last++;
-				printf("New client request accepted (%d). Client address: %s : %d\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+				printf("\nNew client request accepted (%d). Client address: %s : %d\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+
+
 
 			}
 		}
 		else
 		{
+
+
 			// Check if new message is received from connected clients
 			for (int i = 0; i < last; i++)
 			{
@@ -191,7 +214,7 @@ int main()
 					if (iResult > 0)
 					{
 						dataBuffer[iResult] = '\0';
-						printf("Message received from client (%d):\n", i + 1);
+						printf("\nMessage received from client (%d):\n", i + 1);
 
 						//primljenoj poruci u memoriji pristupiti preko pokazivaca tipa (studentInfo *)
 						//jer znamo format u kom je poruka poslata a to je struct studentInfo
@@ -202,6 +225,9 @@ int main()
 						printf("Poeni studenta: %d  \n", ntohs(student->poeni));
 						printf("_______________________________  \n");*/
 
+						igrac = (igracInfo*)dataBuffer;
+						printf("Ime igraca: %s", igrac);
+						infoIgraca++;
 
 					}
 					else if (iResult == 0)
@@ -235,9 +261,68 @@ int main()
 						last--;
 					}
 				}
+
+
 			}
+
 		}
+
+			//dodati da kada se treci klijent uloguje igra moze da pocne
+			
+			if (infoIgraca == 3)
+			{
+				sprintf(dataBuffer, "Igra moze da pocne. Prvi igrac (ime) bira broj.");
+				for (int i = 0; i < last; i++)
+				{
+
+					// Send message to clients using connected socket
+					iResult = send(clientSockets[i], dataBuffer, (int)strlen(dataBuffer), 0);
+
+
+					// Check result of send function
+					if (iResult == SOCKET_ERROR)
+					{
+						printf("send failed with error: %d\n", WSAGetLastError());
+						//shutdown(clientSockets[i], SD_BOTH);
+						closesocket(clientSockets[i]);
+
+						//break;
+						WSACleanup();
+						return 1;
+					}
+
+					memset(dataBuffer, 0, BUFFER_SIZE); //pokusala sam da dobijem prvog klijenta
+					snprintf(dataBuffer, BUFFER_SIZE, "%d", i);
+					iResult = send(clientSockets[i], dataBuffer, strlen(dataBuffer), 0);
+				}
+
+
+				/*int selectResult = select(0, NULL, &writefds, NULL, NULL);
+
+				if (selectResult == SOCKET_ERROR)
+				{
+					printf("Select failed with error: %d\n", WSAGetLastError());
+					closesocket(listenSocket);
+					WSACleanup();
+					return 1;
+				}
+				else if (selectResult == 0) // timeout expired
+				{
+					if (_kbhit()) //check if some key is pressed
+					{
+						_getch();
+						printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
+					}
+					continue;
+				}
+				*/
+			}
+			
+		
+	
+
 	}
+
 
 	//Close listen and accepted sockets
 	closesocket(listenSocket);
