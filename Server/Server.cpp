@@ -18,7 +18,10 @@
 
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 3
+
+
+void WSAInitialization();
 
 struct igracInfo
 {
@@ -27,11 +30,12 @@ struct igracInfo
 };
 
 
+
+
+
 // TCP server that use non-blocking sockets
 int main()
 {
-
-
 	// Socket used for listening for new clients 
 	SOCKET listenSocket = INVALID_SOCKET;
 
@@ -44,14 +48,8 @@ int main()
 	char dataBuffer[BUFFER_SIZE];
 
 
-	// Inicijalizacija WSA biblioteke
-	WSADATA wsaData;
+	WSAInitialization();
 
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-	{
-		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
-		return 1;
-	}
 
 	// Initialize serverAddress structure used by bind
 	sockaddr_in serverAddress;
@@ -123,7 +121,7 @@ int main()
 	timeVal.tv_usec = 0;
 
 	igracInfo *igrac;
-	int infoIgraca = 0;
+	int igraciCounter = 0;
 	
 
 	
@@ -226,8 +224,8 @@ int main()
 						printf("_______________________________  \n");*/
 
 						igrac = (igracInfo*)dataBuffer;
-						printf("Ime igraca: %s", igrac);
-						infoIgraca++;
+						printf("Ime igraca: %s", igrac->ime);
+						igraciCounter++;
 
 					}
 					else if (iResult == 0)
@@ -269,7 +267,7 @@ int main()
 
 			//dodati da kada se treci klijent uloguje igra moze da pocne
 			
-			if (infoIgraca == 3)
+			if (igraciCounter == 3)
 			{
 				sprintf(dataBuffer, "Igra moze da pocne. Prvi igrac (ime) bira broj.");
 				for (int i = 0; i < last; i++)
@@ -331,4 +329,16 @@ int main()
 	WSACleanup();
 
 	return 0;
+}
+
+void WSAInitialization()
+{
+	// Inicijalizacija WSA biblioteke
+	WSADATA wsaData;
+
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
+		return;
+	}
 }
