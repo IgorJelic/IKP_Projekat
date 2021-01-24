@@ -7,6 +7,7 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
 #include "conio.h"
 
 #pragma comment (lib, "Ws2_32.lib")
@@ -75,51 +76,139 @@ int main()
 		WSACleanup();
 		return 1;
 	}
+	
+	iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+	if (iResult > 0)
+	{
+		dataBuffer[iResult] = '\0';
+		printf("Message received from server:\n");
+
+		printf(">>\t%s\n", dataBuffer);
+
+		printf("_______________________________  \n");
+
+
+	}
+	else if (iResult == 0)
+	{
+		// connection was closed gracefully
+		printf("Connection with server closed.\n");
+		closesocket(connectSocket);
+	}
 	else
 	{
-		printf("Sacekajte da vam server posalje znak za pocetak igre!\n");
+		// there was an error during recv
+		printf("recv failed with error: %d\n", WSAGetLastError());
+		closesocket(connectSocket);
 	}
 
-	char poruka[256];
-	igracInfo igrac;
+	// proverava substring od indexa 0 pa na dalje
+	std::string s = dataBuffer;
 
-	while (true)
+	if (s.rfind("No room!", 0) == 0)
 	{
-		//// Unos potrebnih podataka koji ce se poslati serveru
-		printf("Unesite ime igraca: ");
-		gets_s(igrac.ime, 15);
+		printf("\n\n>> Client shuting down... Press any key...");
 
-		iResult = send(connectSocket, (char*)&igrac, (int)sizeof(igracInfo), 0);
+		// Shutdown the connection since we're done
+		iResult = shutdown(connectSocket, SD_BOTH);
 
-		//// Check result of send function
+		// Check if connection is succesfully shut down.
 		if (iResult == SOCKET_ERROR)
 		{
-			printf("send failed with error: %d\n", WSAGetLastError());
+			printf("Shutdown failed with error: %d\n", WSAGetLastError());
 			closesocket(connectSocket);
 			WSACleanup();
 			return 1;
 		}
 
+		Sleep(1000);
 
+		// Close connected socket
+		closesocket(connectSocket);
 
-		//slanje poruke serveru
+		// Deinitialize WSA library
+		WSACleanup();
+
+		_getch();
+	}
+	else
+	{
+		char poruka[256];
+		igracInfo igrac;
+
 		while (true)
 		{
+			//// Unos potrebnih podataka koji ce se poslati serveru
+			printf("Unesite ime igraca: ");
+			gets_s(igrac.ime, 15);
 
-			iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+			iResult = send(connectSocket, (char*)&igrac, (int)sizeof(igracInfo), 0);
 
-			if (iResult > 0)	// Check if message is successfully received
+			//// Check result of send function
+			if (iResult == SOCKET_ERROR)
 			{
-				dataBuffer[iResult] = '\0';
+				printf("send failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+				WSACleanup();
+				return 1;
+			}
 
-				// Log message text
-				printf("Server sent: %s.\n", dataBuffer);
 
 
-				/*printf("\nOpseg broja: ");
+			//slanje poruke serveru
+			while (true)
+			{
+
+				iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+
+				if (iResult > 0)	// Check if message is successfully received
+				{
+					dataBuffer[iResult] = '\0';
+
+					// Log message text
+					printf("Server sent: %s.\n", dataBuffer);
+
+
+					/*printf("\nOpseg broja: ");
+
+					gets_s(poruka);
+					iResult = send(connectSocket, (char*)&poruka, strlen(poruka), 0);
+
+					if (iResult == SOCKET_ERROR)
+					{
+						printf("send failed with error: %d\n", WSAGetLastError());
+						closesocket(connectSocket);
+						WSACleanup();
+						return 1;
+					}*/
+
+
+				}
+				else if (iResult == 0)	// Check if shutdown command is received
+				{
+					// Connection was closed successfully
+					printf("Connection with server closed.\n");
+					closesocket(connectSocket);
+					break;
+					//WSACleanup();
+					//return 0;
+				}
+				else	// There was an error during recv
+				{
+
+					printf("recv failed with error: %d\n", WSAGetLastError());
+					closesocket(connectSocket);
+					break;
+					//WSACleanup();
+					//return 1;
+				}
+
+
+
+				/*printf("\nPress 'x' to exit or any other key to continue: ");
 
 				gets_s(poruka);
-				iResult = send(connectSocket, (char*)&poruka, strlen(poruka), 0);
+				iResult = send(connectSocket, (char*) &poruka, strlen(poruka), 0);
 
 				if (iResult == SOCKET_ERROR)
 				{
@@ -127,76 +216,43 @@ int main()
 					closesocket(connectSocket);
 					WSACleanup();
 					return 1;
+				}
+
+				printf("\nMessage successfully sent. Total bytes: %ld\n", iResult);
+				if (_getch() == 'x')
+				{
+					break;
 				}*/
 
 
+
 			}
-			else if (iResult == 0)	// Check if shutdown command is received
-			{
-				// Connection was closed successfully
-				printf("Connection with server closed.\n");
-				closesocket(connectSocket);
-				break;
-				//WSACleanup();
-				//return 0;
-			}
-			else	// There was an error during recv
-			{
-
-				printf("recv failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				break;
-				//WSACleanup();
-				//return 1;
-			}
-			
-
-
-			/*printf("\nPress 'x' to exit or any other key to continue: ");
-
-			gets_s(poruka); 
-			iResult = send(connectSocket, (char*) &poruka, strlen(poruka), 0);
-
-			if (iResult == SOCKET_ERROR)
-			{
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				WSACleanup();
-				return 1;
-			} 
-
-			printf("\nMessage successfully sent. Total bytes: %ld\n", iResult);
-			if (_getch() == 'x')
-			{
-				break;
-			}*/
-
 
 
 		}
-		
 
-	}
+		// Shutdown the connection since we're done
+		iResult = shutdown(connectSocket, SD_BOTH);
 
-	// Shutdown the connection since we're done
-	iResult = shutdown(connectSocket, SD_BOTH);
+		// Check if connection is succesfully shut down.
+		if (iResult == SOCKET_ERROR)
+		{
+			printf("Shutdown failed with error: %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+			WSACleanup();
+			return 1;
+		}
 
-	// Check if connection is succesfully shut down.
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("Shutdown failed with error: %d\n", WSAGetLastError());
+		Sleep(1000);
+
+		// Close connected socket
 		closesocket(connectSocket);
+
+		// Deinitialize WSA library
 		WSACleanup();
-		return 1;
 	}
 
-	Sleep(1000);
-
-	// Close connected socket
-	closesocket(connectSocket);
-
-	// Deinitialize WSA library
-	WSACleanup();
+	
 
 	return 0;
 }

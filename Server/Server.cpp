@@ -30,14 +30,12 @@ struct igracInfo
 };
 
 
-
-
-
 // TCP server that use non-blocking sockets
 int main()
 {
 	// Socket used for listening for new clients 
 	SOCKET listenSocket = INVALID_SOCKET;
+	SOCKET deniedSocket = INVALID_SOCKET;
 
 	// Sockets used for communication with client
 	SOCKET clientSockets[MAX_CLIENTS];
@@ -122,9 +120,6 @@ int main()
 
 	igracInfo *igrac;
 	int igraciCounter = 0;
-	
-
-	
 
 	while (true)
 	{
@@ -132,10 +127,11 @@ int main()
 		FD_ZERO(&readfds);
 
 		// add server's socket and clients' sockets to set
-		if (last != MAX_CLIENTS)
+		/*if (last != MAX_CLIENTS)
 		{
 			FD_SET(listenSocket, &readfds);
-		}
+		}*/
+		FD_SET(listenSocket, &readfds);
 
 		for (int i = 0; i < last; i++)
 		{
@@ -156,11 +152,11 @@ int main()
 		}
 		else if (selectResult == 0) // timeout expired
 		{
-			if (_kbhit()) //check if some key is pressed
-			{
-				_getch();
-				printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
-			}
+			//if (_kbhit()) //check if some key is pressed
+			//{
+			//	_getch();
+			//	printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
+			//}
 			continue;
 		}
 		else if (FD_ISSET(listenSocket, &readfds))
@@ -169,32 +165,95 @@ int main()
 			sockaddr_in clientAddr;
 			int clientAddrSize = sizeof(struct sockaddr_in);
 
-			// New connection request is received. Add new socket in array on first free position.
-			clientSockets[last] = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
-
-			if (clientSockets[last] == INVALID_SOCKET)
+			if (last < MAX_CLIENTS)
 			{
-				if (WSAGetLastError() == WSAECONNRESET)
+				// New connection request is received. Add new socket in array on first free position.
+				clientSockets[last] = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+
+				if (clientSockets[last] == INVALID_SOCKET)
 				{
-					printf("accept failed, because timeout for client request has expired.\n");
+					if (WSAGetLastError() == WSAECONNRESET)
+					{
+						printf("accept failed, because timeout for client request has expired.\n");
+					}
+					else
+					{
+						printf("accept failed with error: %d\n", WSAGetLastError());
+					}
 				}
 				else
 				{
-					printf("accept failed with error: %d\n", WSAGetLastError());
+					// postavljanje klijent soketa u neblokirajuci rezim
+					if (ioctlsocket(clientSockets[last], FIONBIO, &mode) != 0)
+					{
+						printf("ioctlsocket failed with error.");
+						continue;
+					}
+
+					if (last == 0)
+					{
+						iResult = send(clientSockets[last], "Welcome! You are admin!", 23, 0);
+
+					}
+					else
+					{
+						char msg[] = "";
+						sprintf(msg, "Welcome, Player %d!", last);
+						iResult = send(clientSockets[last], msg, 19, 0);
+					}
+
+					if (last == 0)
+					{
+						printf("LOG>> New client request accepted (%d). Client address: %s : %d\tADMIN\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+					}
+					else if (last == 1)
+					{
+						printf("LOG>> New client request accepted (%d). Client address: %s : %d\tPLAYER_1\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+					}
+					else if (last == 2)
+					{
+						printf("LOG>> New client request accepted (%d). Client address: %s : %d\tPLAYER_2\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+					}
+
+					last++;
 				}
 			}
 			else
 			{
-				if (ioctlsocket(clientSockets[last], FIONBIO, &mode) != 0)
+				deniedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+				if (deniedSocket == INVALID_SOCKET)
 				{
-					printf("ioctlsocket failed with error.");
-					continue;
+					if (WSAGetLastError() == WSAECONNRESET)
+					{
+						printf("accept failed, because timeout for client request has expired.\n");
+					}
+					else
+					{
+						printf("accept failed with error: %d\n", WSAGetLastError());
+					}
 				}
-				last++;
-				printf("\nNew client request accepted (%d). Client address: %s : %d\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+				else
+				{
+					printf("LOG>> New client(%d) request denied. Client address: %s : %d\n", last+1, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 
+					send(deniedSocket, "No room!", 8, 0);
 
+					Sleep(1000);
 
+					//// Shutdown the connection since we're done
+					//iResult = shutdown(deniedSocket, SD_BOTH);
+
+					//// Check if connection is succesfully shut down.
+					//if (iResult == SOCKET_ERROR)
+					//{
+					//	printf("Shutdown failed with error: %d\n", WSAGetLastError());
+					//	closesocket(deniedSocket);
+					//	WSACleanup();
+					//	return 1;
+					//}
+
+					closesocket(deniedSocket);
+				}
 			}
 		}
 		else
