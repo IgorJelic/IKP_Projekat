@@ -21,14 +21,19 @@
 #define MAX_CLIENTS 3
 
 
-void WSAInitialization();
 
 struct igracInfo
 {
 	char ime[15];
 	bool prvi = false;
+	int broj_pokusaja = 0;
 };
 
+#pragma region FUNKCIJE
+void WSAInitialization();
+bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2);
+
+#pragma endregion
 
 // TCP server that use non-blocking sockets
 int main()
@@ -44,6 +49,11 @@ int main()
 
 	int iResult;
 	char dataBuffer[BUFFER_SIZE];
+
+	// klijenti
+	igracInfo admin = { 0 };
+	igracInfo player1 = { 0 };
+	igracInfo player2 = { 0 };
 
 
 	WSAInitialization();
@@ -126,11 +136,6 @@ int main()
 		// initialize socket set
 		FD_ZERO(&readfds);
 
-		// add server's socket and clients' sockets to set
-		/*if (last != MAX_CLIENTS)
-		{
-			FD_SET(listenSocket, &readfds);
-		}*/
 		FD_SET(listenSocket, &readfds);
 
 		for (int i = 0; i < last; i++)
@@ -152,11 +157,7 @@ int main()
 		}
 		else if (selectResult == 0) // timeout expired
 		{
-			//if (_kbhit()) //check if some key is pressed
-			//{
-			//	_getch();
-			//	printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
-			//}
+
 			continue;
 		}
 		else if (FD_ISSET(listenSocket, &readfds))
@@ -194,14 +195,32 @@ int main()
 					{
 						iResult = send(clientSockets[last], "Welcome! You are admin!", 23, 0);
 
+						//// Check result of send function
+						if (iResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(clientSockets[last]);
+							WSACleanup();
+							return 1;
+						}
 					}
 					else
 					{
 						char msg[] = "";
 						sprintf(msg, "Welcome, Player %d!", last);
 						iResult = send(clientSockets[last], msg, 19, 0);
+
+						//// Check result of send function
+						if (iResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(clientSockets[last]);
+							WSACleanup();
+							return 1;
+						}
 					}
 
+					
 					if (last == 0)
 					{
 						printf("LOG>> New client request accepted (%d). Client address: %s : %d\tADMIN\n", last, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
@@ -258,7 +277,10 @@ int main()
 		}
 		else
 		{
-
+			// prijem poruke
+			// prvo primamo poruke dokle god svi igraci ne unesu username!
+			// posle toga primamo interval i zamisljeni broj od ADMIN klijenta
+			// za to vreme player1 bira kojom ce pretragom da se sluzi dok player2 dobija suprotan izbor pretrage
 
 			// Check if new message is received from connected clients
 			for (int i = 0; i < last; i++)
@@ -270,8 +292,101 @@ int main()
 
 					if (iResult > 0)
 					{
-						dataBuffer[iResult] = '\0';
-						printf("\nMessage received from client (%d):\n", i + 1);
+						if (!AllUsernamesRecieved(&admin, &player1, &player2))
+						{
+							if (i == 0)	// ADMIN username unet
+							{
+								dataBuffer[iResult] = '\0';
+								printf("\nMessage received from ADMIN:\n");
+								strcpy(admin.ime, dataBuffer);
+								printf("Log>> Admin, username = %s\n", admin.ime);
+
+								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								{
+									char message[] = "Waiting for other clients to LogIn...";
+									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//// Check result of send function
+									if (iResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[i]);
+										WSACleanup();
+										return 1;
+									}
+								}
+								else
+								{
+									char message[] = "Send interval of numbers.";
+									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//// Check result of send function
+									if (iResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[i]);
+										WSACleanup();
+										return 1;
+									}
+								}
+							}
+							else if (i == 1) // PLAYER1 username unet
+							{
+								dataBuffer[iResult] = '\0';
+								printf("\nMessage received from player1:\n");
+								strcpy(player1.ime, dataBuffer);
+								printf("Log>> player1, username = %s\n", player1.ime);
+
+								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								{
+									char message[] = "Waiting for other clients to LogIn...";
+									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//// Check result of send function
+									if (iResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[i]);
+										WSACleanup();
+										return 1;
+									}
+								}
+								else
+								{
+									
+								}
+							}
+							else if (i == 2) // PLAYER2 username unet
+							{
+								dataBuffer[iResult] = '\0';
+								printf("\nMessage received from player2:\n");
+
+								strcpy(player2.ime, dataBuffer);
+								printf("Log>> player2, username = %s\n", player2.ime);
+
+								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								{
+									char message[] = "Waiting for other clients to LogIn...";
+									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//// Check result of send function
+									if (iResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[i]);
+										WSACleanup();
+										return 1;
+									}
+								}
+								else
+								{
+
+								}
+							}
+						}
+						
+
+						
 
 						//primljenoj poruci u memoriji pristupiti preko pokazivaca tipa (studentInfo *)
 						//jer znamo format u kom je poruka poslata a to je struct studentInfo
@@ -282,9 +397,9 @@ int main()
 						printf("Poeni studenta: %d  \n", ntohs(student->poeni));
 						printf("_______________________________  \n");*/
 
-						igrac = (igracInfo*)dataBuffer;
+						/*igrac = (igracInfo*)dataBuffer;
 						printf("Ime igraca: %s", igrac->ime);
-						igraciCounter++;
+						igraciCounter++;*/
 
 					}
 					else if (iResult == 0)
@@ -390,9 +505,12 @@ int main()
 	return 0;
 }
 
+#pragma region DEFINICIJE_FJA
+/// <summary>
+/// Initcijalizacija WSA biblioteke
+/// </summary>
 void WSAInitialization()
 {
-	// Inicijalizacija WSA biblioteke
 	WSADATA wsaData;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
@@ -401,3 +519,32 @@ void WSAInitialization()
 		return;
 	}
 }
+
+/// <summary>
+/// Proverava da li su uneti svi usernameovi, if true, zavrsava se sa prijemom usernamova
+/// </summary>
+/// <param name="admin"></param>
+/// <param name="p1"></param>
+/// <param name="p2"></param>
+/// <returns></returns>
+bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2)
+{
+	if (admin->ime[0] == '\0')
+	{
+		return false;
+	}
+	else if (p1->ime[0] == '\0')
+	{
+		return false;
+	}
+	else if (p2->ime[0] == '\0')
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+#pragma endregion

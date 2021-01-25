@@ -20,36 +20,30 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
-struct igracInfo
-{
-	char ime[15];
-	bool prvi = false;
-};
 
+
+bool admin = false;
+
+
+void WSAInitialization();
 
 // TCP client that use non-blocking sockets
 int main()
 {
-	// Socket used to communicate with server
 	SOCKET connectSocket = INVALID_SOCKET;
-
-	// Variable used to store function return value
 	int iResult;
-
-	// Buffer we will use to store message
 	char dataBuffer[BUFFER_SIZE];
 
-	// WSADATA data structure that is to receive details of the Windows Sockets implementation
-	WSADATA wsaData;
+	// ADMIN PROMENLJIVE
+	int adminZamisljenBroj;
+	int adminIntervalPocetak;
+	int adminIntervalKraj;
 
-	// Initialize windows sockets library for this process
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-	{
-		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
-		return 1;
-	}
+	// IGRACI PROMENLJIVE
+	// ...
 
-	// create a socket
+	WSAInitialization();
+
 	connectSocket = socket(AF_INET,
 		SOCK_STREAM,
 		IPPROTO_TCP);
@@ -61,13 +55,11 @@ int main()
 		return 1;
 	}
 
-	// Create and initialize address structure
 	sockaddr_in serverAddress;
 	serverAddress.sin_family = AF_INET;								// IPv4 protocol
 	serverAddress.sin_addr.s_addr = inet_addr(SERVER_IP_ADDRESS);	// ip address of server
 	serverAddress.sin_port = htons(SERVER_PORT);					// server port
 
-	// Connect to server specified in serverAddress and socket connectSocket
 	iResult = connect(connectSocket, (SOCKADDR*)&serverAddress, sizeof(serverAddress));
 	if (iResult == SOCKET_ERROR)
 	{
@@ -77,6 +69,7 @@ int main()
 		return 1;
 	}
 	
+	//""Welcome!You are admin!""
 	iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 	if (iResult > 0)
 	{
@@ -133,25 +126,76 @@ int main()
 	}
 	else
 	{
+		if (s.rfind("Welcome! You are admin!", 0) == 0)
+		{
+			admin = true;
+		}
+
 		char poruka[256];
-		igracInfo igrac;
+
+		printf("Unesite ime igraca: ");
+		gets_s(poruka, 15);
+
+		iResult = send(connectSocket, poruka, (int)strlen(poruka), 0);
+
+		if (iResult == SOCKET_ERROR)
+		{
+			printf("send failed with error: %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+			WSACleanup();
+			return 1;
+		}
+
+		if (admin)
+		{
+			bool valid = false;
+			int retVal = 0;
+
+			while (!retVal)
+			{
+				printf("ADMIN>> Unesite zamisljeni broj: ");
+				retVal = scanf_s("%d", &adminZamisljenBroj);
+				getchar();
+			}
+			
+			valid = false;
+
+			printf("ADMIN>> Unesite pocetak intervala: ");
+			scanf_s("%d", &adminIntervalPocetak);
+
+			printf("ADMIN>> Unesite kraj intervala: ");
+			scanf_s("%d", &adminIntervalKraj);
+		}
+
+		// odgovor na poslat username
+		iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+		if (iResult > 0)
+		{
+			dataBuffer[iResult] = '\0';
+			printf("Message received from server:\n");
+
+			printf(">>\t%s\n", dataBuffer);
+
+			printf("_______________________________  \n");
+
+
+		}
+		else if (iResult == 0)
+		{
+			// connection was closed gracefully
+			printf("Connection with server closed.\n");
+			closesocket(connectSocket);
+		}
+		else
+		{
+			// there was an error during recv
+			printf("recv failed with error: %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+		}
 
 		while (true)
 		{
-			//// Unos potrebnih podataka koji ce se poslati serveru
-			printf("Unesite ime igraca: ");
-			gets_s(igrac.ime, 15);
-
-			iResult = send(connectSocket, (char*)&igrac, (int)sizeof(igracInfo), 0);
-
-			//// Check result of send function
-			if (iResult == SOCKET_ERROR)
-			{
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				WSACleanup();
-				return 1;
-			}
+			
 
 
 
@@ -256,3 +300,17 @@ int main()
 
 	return 0;
 }
+
+#pragma region FUNKCIJE
+void WSAInitialization()
+{
+	WSADATA wsaData;
+
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
+		return;
+	}
+}
+
+#pragma endregion
