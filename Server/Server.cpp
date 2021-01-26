@@ -38,17 +38,20 @@ bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2);
 // TCP server that use non-blocking sockets
 int main()
 {
-	// Socket used for listening for new clients 
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET deniedSocket = INVALID_SOCKET;
-
-	// Sockets used for communication with client
 	SOCKET clientSockets[MAX_CLIENTS];
 	// Index of last client
 	int last = 0;
 
 	int iResult;
 	char dataBuffer[BUFFER_SIZE];
+
+	// ADMIN PROMENLJIVE
+	bool usernameRecievedFromAdmin = false;
+	bool intervalRecievedFromAdmin = false;
+
+	// PLAYERS PROMENLJIVE
 
 	// klijenti
 	igracInfo admin = { 0 };
@@ -292,31 +295,21 @@ int main()
 
 					if (iResult > 0)
 					{
+						// AKO NISU SVI USERNAMEOVI PRIMLJENI
 						if (!AllUsernamesRecieved(&admin, &player1, &player2))
 						{
-							if (i == 0)	// ADMIN username unet
+							if (i == 0)	// ADMIN
 							{
-								dataBuffer[iResult] = '\0';
-								printf("\nMessage received from ADMIN:\n");
-								strcpy(admin.ime, dataBuffer);
-								printf("Log>> Admin, username = %s\n", admin.ime);
-
-								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								// ako nije primljen USERNAME admina
+								if (!usernameRecievedFromAdmin)
 								{
-									char message[] = "Waiting for other clients to LogIn...";
-									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+									dataBuffer[iResult] = '\0';
+									printf("\nMessage received from ADMIN:\n");
+									strcpy(admin.ime, dataBuffer);
+									printf("Log>> Admin, username = %s\n", admin.ime);
 
-									//// Check result of send function
-									if (iResult == SOCKET_ERROR)
-									{
-										printf("send failed with error: %d\n", WSAGetLastError());
-										closesocket(clientSockets[i]);
-										WSACleanup();
-										return 1;
-									}
-								}
-								else
-								{
+									usernameRecievedFromAdmin = true;
+
 									char message[] = "Send interval of numbers.";
 									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
 
@@ -328,7 +321,49 @@ int main()
 										WSACleanup();
 										return 1;
 									}
+
+									//if (!AllUsernamesRecieved(&admin, &player1, &player2))
+									//{
+									//	//char message[] = "Waiting for other clients to LogIn...";
+									//	//iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//	////// Check result of send function
+									//	//if (iResult == SOCKET_ERROR)
+									//	//{
+									//	//	printf("send failed with error: %d\n", WSAGetLastError());
+									//	//	closesocket(clientSockets[i]);
+									//	//	WSACleanup();
+									//	//	return 1;
+									//	//}
+									//}
+									//// moguce da je vamo greska, sta ako se admin prvi ili drugi loguje, nece dobiti ovu dole poruku uopste ?
+									//else
+									//{
+									//	char message[] = "Send interval of numbers.";
+									//	iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+									//	//// Check result of send function
+									//	if (iResult == SOCKET_ERROR)
+									//	{
+									//		printf("send failed with error: %d\n", WSAGetLastError());
+									//		closesocket(clientSockets[i]);
+									//		WSACleanup();
+									//		return 1;
+									//	}
+									//}
 								}
+								else
+								{
+									if (!intervalRecievedFromAdmin)
+									{
+										dataBuffer[iResult] = '\0';
+										printf("\nMessage received from ADMIN:\n");
+										
+										printf("Log>> Interval za pogadjanje = (%d - %d)\n");
+									}
+
+								}
+								
 							}
 							else if (i == 1) // PLAYER1 username unet
 							{

@@ -35,9 +35,9 @@ int main()
 	char dataBuffer[BUFFER_SIZE];
 
 	// ADMIN PROMENLJIVE
-	int adminZamisljenBroj;
-	int adminIntervalPocetak;
-	int adminIntervalKraj;
+	int adminZamisljenBroj = -1;
+	int adminIntervalPocetak = -1;
+	int adminIntervalKraj = -1;
 
 	// IGRACI PROMENLJIVE
 	// ...
@@ -148,23 +148,44 @@ int main()
 
 		if (admin)
 		{
-			bool valid = false;
+			//bool valid = false;
 			int retVal = 0;
 
-			while (!retVal)
+			while (!retVal && (adminZamisljenBroj < 0))
 			{
 				printf("ADMIN>> Unesite zamisljeni broj: ");
 				retVal = scanf_s("%d", &adminZamisljenBroj);
 				getchar();
 			}
 			
-			valid = false;
+			//valid = false;
 
-			printf("ADMIN>> Unesite pocetak intervala: ");
-			scanf_s("%d", &adminIntervalPocetak);
+			while (!retVal && (adminIntervalPocetak > adminZamisljenBroj))
+			{
+				printf("ADMIN>> Unesite pocetak intervala: ");
+				retVal = scanf_s("%d", &adminIntervalPocetak);
+				getchar();
+			}
 
-			printf("ADMIN>> Unesite kraj intervala: ");
-			scanf_s("%d", &adminIntervalKraj);
+			while (!retVal && (adminIntervalPocetak < adminZamisljenBroj))
+			{
+				printf("ADMIN>> Unesite kraj intervala: ");
+				scanf_s("%d", &adminIntervalKraj);
+				getchar();
+			}
+
+			char msg[] = "";
+			sprintf(msg, "%d:%d", adminIntervalPocetak, adminIntervalKraj);
+
+			iResult = send(connectSocket, msg, (int)strlen(msg), 0);
+
+			if (iResult == SOCKET_ERROR)
+			{
+				printf("send failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+				WSACleanup();
+				return 1;
+			}
 		}
 
 		// odgovor na poslat username
