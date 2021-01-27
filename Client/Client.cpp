@@ -21,8 +21,15 @@
 #define BUFFER_SIZE 256
 
 
+// varijable koje oznacavaju koja je uloga running klijenta
+//bool admin = false;
+//bool player1 = false;
+//bool player2 = false;
 
-bool admin = false;
+enum Role { admin, player1, player2 };
+enum Search { binarna, linearna_od_napred, linearna_od_nazad };
+
+bool readyForGame = false;
 
 
 void WSAInitialization();
@@ -34,13 +41,18 @@ int main()
 	int iResult;
 	char dataBuffer[BUFFER_SIZE];
 
+	Role role;
+	Search search;
+
 	// ADMIN PROMENLJIVE
 	int adminZamisljenBroj = -1;
 	int adminIntervalPocetak = -1;
 	int adminIntervalKraj = -1;
 
 	// IGRACI PROMENLJIVE
-	// ...
+	char odabirPretrage[BUFFER_SIZE]; 
+
+#pragma region CONNECTING
 
 	WSAInitialization();
 
@@ -68,8 +80,11 @@ int main()
 		WSACleanup();
 		return 1;
 	}
+
+#pragma endregion
 	
 	//""Welcome!You are admin!""
+	//""Welcome, Player %d!""
 	iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 	if (iResult > 0)
 	{
@@ -98,6 +113,7 @@ int main()
 	// proverava substring od indexa 0 pa na dalje
 	std::string s = dataBuffer;
 
+	// Slucaj da je primljena poruka : No room!, zatvori klijent aplikaciju i konekciju
 	if (s.rfind("No room!", 0) == 0)
 	{
 		printf("\n\n>> Client shuting down... Press any key...");
@@ -128,8 +144,20 @@ int main()
 	{
 		if (s.rfind("Welcome! You are admin!", 0) == 0)
 		{
-			admin = true;
+			role = player1;
+			//admin = true;
 		}
+		if (s.rfind("Welcome, Player 1!", 0) == 0)
+		{
+			role = player1;
+			//player1 = true;
+		}
+		if (s.rfind("Welcome, Player 2!", 0) == 0)
+		{
+			role = player2;
+			//player2 = true;
+		}
+		
 
 		char poruka[256];
 
@@ -146,48 +174,6 @@ int main()
 			return 1;
 		}
 
-		if (admin)
-		{
-			//bool valid = false;
-			int retVal = 0;
-
-			while (!retVal && (adminZamisljenBroj < 0))
-			{
-				printf("ADMIN>> Unesite zamisljeni broj: ");
-				retVal = scanf_s("%d", &adminZamisljenBroj);
-				getchar();
-			}
-			
-			//valid = false;
-
-			while (!retVal && (adminIntervalPocetak > adminZamisljenBroj))
-			{
-				printf("ADMIN>> Unesite pocetak intervala: ");
-				retVal = scanf_s("%d", &adminIntervalPocetak);
-				getchar();
-			}
-
-			while (!retVal && (adminIntervalPocetak < adminZamisljenBroj))
-			{
-				printf("ADMIN>> Unesite kraj intervala: ");
-				scanf_s("%d", &adminIntervalKraj);
-				getchar();
-			}
-
-			char msg[] = "";
-			sprintf(msg, "%d:%d", adminIntervalPocetak, adminIntervalKraj);
-
-			iResult = send(connectSocket, msg, (int)strlen(msg), 0);
-
-			if (iResult == SOCKET_ERROR)
-			{
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				WSACleanup();
-				return 1;
-			}
-		}
-
 		// odgovor na poslat username
 		iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 		if (iResult > 0)
@@ -198,8 +184,6 @@ int main()
 			printf(">>\t%s\n", dataBuffer);
 
 			printf("_______________________________  \n");
-
-
 		}
 		else if (iResult == 0)
 		{
@@ -214,86 +198,109 @@ int main()
 			closesocket(connectSocket);
 		}
 
+		// mozda na ovaj nacin da podelim uloge kad pocne igra
+		/*switch (role)
+		{
+			case admin:
+			{
+
+				break;
+			}
+			case player1:
+			{
+
+				break;
+			}
+			case player2:
+			{
+
+				break;
+			}
+		}*/
+
+		// SLANJE INTERVALA
+		if (role == admin)
+		{
+			//bool valid = false;
+			int retVal = 0;
+
+			while (!retVal || (adminZamisljenBroj < 0))
+			{
+				printf("ADMIN>> Unesite zamisljeni broj: ");
+				retVal = scanf_s("%d", &adminZamisljenBroj);
+				getchar();
+			}
+			
+			retVal = 0;
+
+			//bug, debaguj
+			bool valid = false;
+
+			while (!valid)
+			{
+				printf("ADMIN>> Unesite pocetak intervala: ");
+				retVal = scanf_s("%d", &adminIntervalPocetak);
+				getchar();
+
+				if (retVal == 1)
+				{
+					if (adminIntervalPocetak < adminZamisljenBroj)
+					{
+						valid = true;
+					}
+				}
+			}
+
+			retVal = 0;
+			valid = false;
+
+
+			while (!valid)
+			{
+				printf("ADMIN>> Unesite kraj intervala: ");
+				retVal = scanf_s("%d", &adminIntervalKraj);
+				getchar();
+
+				if (retVal == 1)
+				{
+					if (adminIntervalKraj > adminZamisljenBroj)
+					{
+						valid = true;
+					}
+				}
+			}
+
+			char msg[BUFFER_SIZE];
+			sprintf_s(msg, "%d:%d", adminIntervalPocetak, adminIntervalKraj);
+
+			iResult = send(connectSocket, msg, (int)strlen(msg), 0);
+
+			if (iResult == SOCKET_ERROR)
+			{
+				printf("send failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+				WSACleanup();
+				return 1;
+			}
+		}
+
+		/*while (!readyForGame)
+		{
+			Sleep(1000);
+			printf("Waiting for players...");
+		}*/
+
+		// SLANJE ODABRANE PRETRAGE
+		if (player1)
+		{
+			printf("PLAYER1>> Pretraga: Binarna (1) / Linearna od prvog(2) / Linearna od poslednjeg(3)\nPLAYER1>> ");
+			gets_s(odabirPretrage, BUFFER_SIZE);
+		}
+
 		while (true)
 		{
 			
-
-
-
-			//slanje poruke serveru
-			while (true)
-			{
-
-				iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
-
-				if (iResult > 0)	// Check if message is successfully received
-				{
-					dataBuffer[iResult] = '\0';
-
-					// Log message text
-					printf("Server sent: %s.\n", dataBuffer);
-
-
-					/*printf("\nOpseg broja: ");
-
-					gets_s(poruka);
-					iResult = send(connectSocket, (char*)&poruka, strlen(poruka), 0);
-
-					if (iResult == SOCKET_ERROR)
-					{
-						printf("send failed with error: %d\n", WSAGetLastError());
-						closesocket(connectSocket);
-						WSACleanup();
-						return 1;
-					}*/
-
-
-				}
-				else if (iResult == 0)	// Check if shutdown command is received
-				{
-					// Connection was closed successfully
-					printf("Connection with server closed.\n");
-					closesocket(connectSocket);
-					break;
-					//WSACleanup();
-					//return 0;
-				}
-				else	// There was an error during recv
-				{
-
-					printf("recv failed with error: %d\n", WSAGetLastError());
-					closesocket(connectSocket);
-					break;
-					//WSACleanup();
-					//return 1;
-				}
-
-
-
-				/*printf("\nPress 'x' to exit or any other key to continue: ");
-
-				gets_s(poruka);
-				iResult = send(connectSocket, (char*) &poruka, strlen(poruka), 0);
-
-				if (iResult == SOCKET_ERROR)
-				{
-					printf("send failed with error: %d\n", WSAGetLastError());
-					closesocket(connectSocket);
-					WSACleanup();
-					return 1;
-				}
-
-				printf("\nMessage successfully sent. Total bytes: %ld\n", iResult);
-				if (_getch() == 'x')
-				{
-					break;
-				}*/
-
-
-
-			}
-
-
+		
 		}
 
 		// Shutdown the connection since we're done

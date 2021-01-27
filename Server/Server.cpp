@@ -8,6 +8,7 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
 #include "conio.h"
 
 #pragma comment (lib, "Ws2_32.lib")
@@ -50,6 +51,8 @@ int main()
 	// ADMIN PROMENLJIVE
 	bool usernameRecievedFromAdmin = false;
 	bool intervalRecievedFromAdmin = false;
+	int intervalMin;
+	int intervalMax;
 
 	// PLAYERS PROMENLJIVE
 
@@ -240,6 +243,7 @@ int main()
 					last++;
 				}
 			}
+			// u slucaju da pokusa da se poveze cetvrti klijent
 			else
 			{
 				deniedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
@@ -282,8 +286,9 @@ int main()
 		{
 			// prijem poruke
 			// prvo primamo poruke dokle god svi igraci ne unesu username!
-			// posle toga primamo interval i zamisljeni broj od ADMIN klijenta
+			// posle toga primamo interval od ADMIN klijenta
 			// za to vreme player1 bira kojom ce pretragom da se sluzi dok player2 dobija suprotan izbor pretrage
+			// igrac koji bude imao izbor LINEARNA PRETRAGA, moze da bira da se linearna pretraga vrsi od prvog ili poslednjeg elementa u intervalu
 
 			// Check if new message is received from connected clients
 			for (int i = 0; i < last; i++)
@@ -292,7 +297,7 @@ int main()
 				if (FD_ISSET(clientSockets[i], &readfds))
 				{
 					iResult = recv(clientSockets[i], dataBuffer, BUFFER_SIZE, 0);
-
+					// poruka je primljena
 					if (iResult > 0)
 					{
 						// AKO NISU SVI USERNAMEOVI PRIMLJENI
@@ -322,50 +327,33 @@ int main()
 										return 1;
 									}
 
-									//if (!AllUsernamesRecieved(&admin, &player1, &player2))
-									//{
-									//	//char message[] = "Waiting for other clients to LogIn...";
-									//	//iResult = send(clientSockets[i], message, (int)strlen(message), 0);
-
-									//	////// Check result of send function
-									//	//if (iResult == SOCKET_ERROR)
-									//	//{
-									//	//	printf("send failed with error: %d\n", WSAGetLastError());
-									//	//	closesocket(clientSockets[i]);
-									//	//	WSACleanup();
-									//	//	return 1;
-									//	//}
-									//}
-									//// moguce da je vamo greska, sta ako se admin prvi ili drugi loguje, nece dobiti ovu dole poruku uopste ?
-									//else
-									//{
-									//	char message[] = "Send interval of numbers.";
-									//	iResult = send(clientSockets[i], message, (int)strlen(message), 0);
-
-									//	//// Check result of send function
-									//	if (iResult == SOCKET_ERROR)
-									//	{
-									//		printf("send failed with error: %d\n", WSAGetLastError());
-									//		closesocket(clientSockets[i]);
-									//		WSACleanup();
-									//		return 1;
-									//	}
-									//}
 								}
 								else
 								{
+									// ako interval nije primljen, primi interval i ispisi ga, kada se svi loguju, prosledices intervale igracima
 									if (!intervalRecievedFromAdmin)
 									{
 										dataBuffer[iResult] = '\0';
 										printf("\nMessage received from ADMIN:\n");
+
+										char delimiter = ':';
+										std::string s = dataBuffer;
+										std::string minInterval = s.substr(0, s.find(delimiter));
+										std::string maxInterval = s.substr(s.find(delimiter) + 1);
+
+										intervalMin = std::stoi(minInterval);
+										intervalMax = std::stoi(maxInterval);
 										
-										printf("Log>> Interval za pogadjanje = (%d - %d)\n");
+										printf("Log>> Interval za pogadjanje = (%d - %d)\n", intervalMin, intervalMax);
+
+										intervalRecievedFromAdmin = true;
 									}
+									// da li treba nesto u slucaju da je interval primljen a da svi igraci jos nisu ulogovani?
 
 								}
 								
 							}
-							else if (i == 1) // PLAYER1 username unet
+							else if (i == 1) // PLAYER1 
 							{
 								dataBuffer[iResult] = '\0';
 								printf("\nMessage received from player1:\n");
