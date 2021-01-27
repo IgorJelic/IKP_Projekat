@@ -233,7 +233,6 @@ int main()
 			
 			retVal = 0;
 
-			//bug, debaguj
 			bool valid = false;
 
 			while (!valid)
