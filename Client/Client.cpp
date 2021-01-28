@@ -158,12 +158,12 @@ int main()
 			role = admin;
 			//admin = true;
 		}
-		if (s.rfind("Welcome, Player 1!", 0) == 0)
+		else if (s.rfind("Welcome, Player 1!", 0) == 0)
 		{
 			role = player1;
 			//player1 = true;
 		}
-		if (s.rfind("Welcome, Player 2!", 0) == 0)
+		else if (s.rfind("Welcome, Player 2!", 0) == 0)
 		{
 			role = player2;
 			//player2 = true;
@@ -350,6 +350,31 @@ int main()
 		}
 		}
 
+
+		// Cekanje na prijem poruke za pocetak igre
+		iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+		if (iResult > 0)
+		{
+			printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+			dataBuffer[iResult] = '\0';
+			printf("%s", dataBuffer);
+		}
+		else if (iResult == 0)
+		{
+			// connection was closed gracefully
+			printf("Connection with server closed.\n");
+			closesocket(connectSocket);
+		}
+		else
+		{
+			// there was an error during recv
+			printf("recv failed with error: %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+		}
+
+		printf("\n\n>> Game starts in 5 seconds...");
+		Sleep(5000);
+
 		// STAVLJANJE SOKETA U NEBLOKIRAJUCE STANJE
 		fd_set readfds;
 
@@ -374,7 +399,17 @@ int main()
 			}
 			else if (FD_ISSET(connectSocket, &readfds))
 			{
-				
+				switch (role)
+				{
+				case admin:
+					break;
+				case player1:
+					break;
+				case player2:
+					break;
+				default:
+					break;
+				}
 			}
 		}
 
@@ -443,9 +478,10 @@ void WSAInitialization()
 
 int Binary(int intervalMin, int intervalMax)
 {
-	int retVal = 0;
+	float retVal = (intervalMax - intervalMin) / 2;
+	retVal = floor(retVal);
 
-	return retVal;
+	return (int)retVal;
 }
 
 int LinearFront(int intervalMin)

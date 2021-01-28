@@ -206,7 +206,6 @@ int main()
 
 				_getch();
 			}
-			// ovde proveri da li je spremna igra za pocetak
 			continue;
 		}
 		// prihvatanje klijenata
@@ -360,17 +359,17 @@ int main()
 
 									usernameRecievedFromAdmin = true;
 
-									char message[] = "Send interval of numbers.";
-									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+									//char message[] = "Send interval of numbers.";
+									//iResult = send(clientSockets[i], message, (int)strlen(message), 0);
 
-									//// Check result of send function
-									if (iResult == SOCKET_ERROR)
-									{
-										printf("send failed with error: %d\n", WSAGetLastError());
-										closesocket(clientSockets[i]);
-										WSACleanup();
-										return 1;
-									}
+									////// Check result of send function
+									//if (iResult == SOCKET_ERROR)
+									//{
+									//	printf("send failed with error: %d\n", WSAGetLastError());
+									//	closesocket(clientSockets[i]);
+									//	WSACleanup();
+									//	return 1;
+									//}
 
 								}
 								else
@@ -415,9 +414,7 @@ int main()
 								else
 								{
 									dataBuffer[iResult] = '\0';
-									printf("\nMessage received from player1:\n");
-									printf(">>\t%s\n", dataBuffer);
-									printf("_______________________________  \n");
+									
 
 									// ako je PLAYER1 odabrao binarnu pretragu, PLAYER2 ima izbor da bira koju od dve linearne varijante zeli
 									if (strcmp(dataBuffer, "1") == 0)
@@ -447,6 +444,8 @@ int main()
 										return 1;
 									}
 
+									printf("\nMessage received from player1: %s\n", P1Pretraga);
+
 									pretragaRecievedFromP1 = true;
 								}
 							}
@@ -467,7 +466,6 @@ int main()
 								else
 								{
 									dataBuffer[iResult] = '\0';
-									printf("\nMessage received from player2: %s\n", dataBuffer);
 
 									if (strcmp(dataBuffer, "0") == 0)
 									{
@@ -483,6 +481,9 @@ int main()
 									}
 
 									pretragaRecievedFromP2 = true;
+
+									printf("\nMessage received from player2: %s\n", P2Pretraga);
+
 
 								}
 								
