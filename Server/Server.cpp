@@ -55,13 +55,17 @@ int main()
 	int intervalMax;
 
 	// PLAYERS PROMENLJIVE
+	bool usernameRecievedFromP1 = false;
+	bool usernameRecievedFromP2 = false;
+	char P1Pretraga[BUFFER_SIZE];
+	char P2Pretraga[BUFFER_SIZE];
 
 	// klijenti
 	igracInfo admin = { 0 };
 	igracInfo player1 = { 0 };
 	igracInfo player2 = { 0 };
 
-
+	#pragma region DIZANJE SERVERA
 	WSAInitialization();
 
 
@@ -133,6 +137,8 @@ int main()
 	timeval timeVal;
 	timeVal.tv_sec = 1;
 	timeVal.tv_usec = 0;
+#pragma endregion
+
 
 	igracInfo *igrac;
 	int igraciCounter = 0;
@@ -166,12 +172,14 @@ int main()
 
 			continue;
 		}
+		// prihvatanje klijenata
 		else if (FD_ISSET(listenSocket, &readfds))
 		{
 			// Struct for information about connected client
 			sockaddr_in clientAddr;
 			int clientAddrSize = sizeof(struct sockaddr_in);
 
+			// prihvatnje prva 3 klijenta
 			if (last < MAX_CLIENTS)
 			{
 				// New connection request is received. Add new socket in array on first free position.
@@ -243,7 +251,7 @@ int main()
 					last++;
 				}
 			}
-			// u slucaju da pokusa da se poveze cetvrti klijent
+			// u slucaju da pokusa da se poveze 4. klijent
 			else
 			{
 				deniedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
@@ -355,29 +363,57 @@ int main()
 							}
 							else if (i == 1) // PLAYER1 
 							{
-								dataBuffer[iResult] = '\0';
-								printf("\nMessage received from player1:\n");
-								strcpy(player1.ime, dataBuffer);
-								printf("Log>> player1, username = %s\n", player1.ime);
-
-								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								// ako username jos nije primljen
+								if (!usernameRecievedFromP1)
 								{
-									char message[] = "Waiting for other clients to LogIn...";
-									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
-
-									//// Check result of send function
-									if (iResult == SOCKET_ERROR)
-									{
-										printf("send failed with error: %d\n", WSAGetLastError());
-										closesocket(clientSockets[i]);
-										WSACleanup();
-										return 1;
-									}
+									dataBuffer[iResult] = '\0';
+									printf("\nMessage received from player1:\n");
+									strcpy(player1.ime, dataBuffer);
+									printf("Log>> player1, username = %s\n", player1.ime);
 								}
+								// username primljen, na redu je odabir pretrage
+								// obradi odabir pretrage, sacuvaj ga, pa ga salji kad bude GAMESTARTREADY
 								else
 								{
-									
+									dataBuffer[iResult] = '\0';
+									printf("\nMessage received from player1:\n");
+									printf(">>\t%s\n", dataBuffer);
+									printf("_______________________________  \n");
+
+									if (strcmp(dataBuffer, "1") == 0)
+									{
+										searchP1 = binarna;
+									}
+									else if (strcmp(dataBuffer, "2") == 0)
+									{
+										searchP1 = linearna_od_napred;
+									}
+									else
+									{
+										searchP1 = linearna_od_nazad;
+									}
 								}
+
+								
+
+								//if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								//{
+								//	char message[] = "Waiting for other clients to LogIn...";
+								//	iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+
+								//	//// Check result of send function
+								//	if (iResult == SOCKET_ERROR)
+								//	{
+								//		printf("send failed with error: %d\n", WSAGetLastError());
+								//		closesocket(clientSockets[i]);
+								//		WSACleanup();
+								//		return 1;
+								//	}
+								//}
+								//else
+								//{
+								//	
+								//}
 							}
 							else if (i == 2) // PLAYER2 username unet
 							{
