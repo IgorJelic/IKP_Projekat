@@ -376,66 +376,157 @@ int main()
 		Sleep(5000);
 
 		// STAVLJANJE SOKETA U NEBLOKIRAJUCE STANJE
-		fd_set readfds;
+		//fd_set readfds;
 
 		while (true)
 		{
-			FD_ZERO(&readfds);
-			FD_SET(connectSocket, &readfds);
-
-			int selectResult = select(0, &readfds, NULL, NULL, NULL);
-
-			if (selectResult == SOCKET_ERROR)
+			switch (role)
 			{
-				printf("Select failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				WSACleanup();
-				return 1;
-			}
-			else if (selectResult == 0) // timeout expired
-			{
-
-				continue;
-			}
-			else if (FD_ISSET(connectSocket, &readfds))
-			{
-				switch (role)
-				{
+				// prima broj, vraca manje vece ili jednako
 				case admin:
+				{
+					iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+					if (iResult> 0)
+					{
+						// moras skontati kom klijentu treba da se vrati obavestenje
+						// neka format bude val:key => val = pogadjanje, key = koji igrac
+
+						/*
+						std::string s = dataBuffer;
+						std::string minInterval = s.substr(0, s.find(delimiter));
+						std::string maxInterval = s.substr(s.find(delimiter) + 1);*/
+
+						dataBuffer[iResult] = '\0';
+
+						char delimiter = ':';
+						std::string sValKey = dataBuffer;
+						std::string sVal = sValKey.substr(0, sValKey.find(delimiter));
+						std::string sKey = sValKey.substr(sValKey.find(delimiter) + 1);
+
+						int val = std::stoi(sVal);
+
+						char sendMsg[BUFFER_SIZE];
+						if (val == adminZamisljenBroj)
+						{
+							strcpy(sendMsg, "TACNO");
+						}
+						else if (val < adminZamisljenBroj)
+						{
+							strcpy(sendMsg, "MANJE");
+						}
+						else
+						{
+							strcpy(sendMsg, "VECE");
+						}
+
+						sValKey = sendMsg;
+						sValKey += ":" + sKey;
+
+						strcpy(sendMsg, sValKey.c_str());
+
+						int tempResult = send(connectSocket, sendMsg, (int)strlen(sendMsg), 0);
+						//// Check result of send function
+						if (tempResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+							WSACleanup();
+							return 1;
+						}
+					}
+					else if (iResult == 0)
+					{
+						// connection was closed gracefully
+						printf("Connection with server closed.\n");
+						closesocket(connectSocket);
+					}
+					else
+					{
+						// there was an error during recv
+						printf("recv failed with error: %d\n", WSAGetLastError());
+						closesocket(connectSocket);
+					}
+
 					break;
+				}
 				case player1:
+				{
+					switch (searchP1)
+					{
+					case binarna:
+						break;
+					case linearna_od_napred:
+						break;
+					case linearna_od_nazad:
+						break;
+					default:
+						break;
+					}
+
 					break;
+				}
 				case player2:
-					break;
-				default:
+				{
 					break;
 				}
 			}
+
+			//FD_ZERO(&readfds);
+			//FD_SET(connectSocket, &readfds);
+
+			//int selectResult = select(0, &readfds, NULL, NULL, NULL);
+
+			//if (selectResult == SOCKET_ERROR)
+			//{
+			//	printf("Select failed with error: %d\n", WSAGetLastError());
+			//	closesocket(connectSocket);
+			//	WSACleanup();
+			//	return 1;
+			//}
+			//else if (selectResult == 0) // timeout expired
+			//{
+
+			//	continue;
+			//}
+			//else if (FD_ISSET(connectSocket, &readfds))
+			//{
+			//	switch (role)
+			//	{
+			//	case admin:
+			//		break;
+			//	case player1:
+			//		break;
+			//	case player2:
+			//		break;
+			//	default:
+			//		break;
+			//	}
+			//}
 		}
 
-		// odgovor na poslat username
-		iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
-		if (iResult > 0)
-		{
-			dataBuffer[iResult] = '\0';
-			printf("Message received from server:\n");
+		//// odgovor na poslat username
+		//iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+		//if (iResult > 0)
+		//{
+		//	dataBuffer[iResult] = '\0';
+		//	printf("Message received from server:\n");
 
-			printf(">>\t%s\n", dataBuffer);
+		//	printf(">>\t%s\n", dataBuffer);
 
-			printf("_______________________________  \n");
-		}
-		else if (iResult == 0)
-		{
-			// connection was closed gracefully
-			printf("Connection with server closed.\n");
-			closesocket(connectSocket);
-		}
-		else
-		{
-			// there was an error during recv
-			printf("recv failed with error: %d\n", WSAGetLastError());
-			closesocket(connectSocket);
-		}		
+		//	printf("_______________________________  \n");
+		//}
+		//else if (iResult == 0)
+		//{
+		//	// connection was closed gracefully
+		//	printf("Connection with server closed.\n");
+		//	closesocket(connectSocket);
+		//}
+		//else
+		//{
+		//	// there was an error during recv
+		//	printf("recv failed with error: %d\n", WSAGetLastError());
+		//	closesocket(connectSocket);
+		//}		
 
 
 		// Shutdown the connection since we're done
