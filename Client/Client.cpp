@@ -1,4 +1,5 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
 
 #define WIN32_LEAN_AND_MEAN
 
@@ -249,7 +250,6 @@ int main()
 		}
 		case player1:
 		{
-			// URADI VALIDACIJU UNOSA
 			do
 			{
 				printf("PLAYER1>> Pretraga: Binarna (1) / Linearna od prvog(2) / Linearna od poslednjeg(3)\nPLAYER1>> ");
@@ -291,7 +291,41 @@ int main()
 				printf(">>\t%s\n", dataBuffer);
 				printf("_______________________________  \n");
 
+				// ako je PLAYERU2 dodeljena linearna pretraga, ima opciju da pocne s kraja ili s pocetka intervala
+				if (strcmp(dataBuffer, "Linearna") == 0)
+				{
+					do
+					{
+						printf("PLAYER2>> Linearna pretraga: Od prvog(1) / Od poslednjeg(2)\nPLAYER2>> ");
+						gets_s(P2odabirPretrage, BUFFER_SIZE);
+					} while ((strcmp(P2odabirPretrage, "1") != 0) && (strcmp(P2odabirPretrage, "2") != 0));
 
+					if (strcmp(P2odabirPretrage, "1") == 0)
+					{
+						searchP2 = linearna_od_napred;
+					}
+					else
+					{
+						searchP2 = linearna_od_nazad;
+					}
+
+				}
+				else
+				{
+					searchP2 = binarna;
+					strcpy(P2odabirPretrage, "0");
+				}
+
+				// potvrda serveru o odabiru pretrage PLAYERA2
+				int tempResult = send(connectSocket, P2odabirPretrage, (int)strlen(P2odabirPretrage), 0);
+				//// Check result of send function
+				if (tempResult == SOCKET_ERROR)
+				{
+					printf("send failed with error: %d\n", WSAGetLastError());
+					closesocket(connectSocket);
+					WSACleanup();
+					return 1;
+				}
 
 
 			}

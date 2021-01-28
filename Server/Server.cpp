@@ -39,6 +39,8 @@ bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2);
 // TCP server that use non-blocking sockets
 int main()
 {
+	bool GAME_START = false;
+
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET deniedSocket = INVALID_SOCKET;
 	SOCKET clientSockets[MAX_CLIENTS];
@@ -160,7 +162,8 @@ int main()
 
 
 		// wait for events on set						  &timeVal
-		int selectResult = select(0, &readfds, NULL, NULL, NULL);
+		//int selectResult = select(0, &readfds, NULL, NULL, NULL);
+		int selectResult = select(0, &readfds, NULL, NULL, &timeVal); //mozda na ovu foru na svakih sekund da proverava da li je game ready to start?
 
 		if (selectResult == SOCKET_ERROR)
 		{
@@ -169,9 +172,41 @@ int main()
 			WSACleanup();
 			return 1;
 		}
+		// na svakih timeVal sekundi (1sec), proveri da li je game ready to play
 		else if (selectResult == 0) // timeout expired
 		{
+			if (usernameRecievedFromAdmin && usernameRecievedFromP1 && usernameRecievedFromP2 && intervalRecievedFromAdmin && pretragaRecievedFromP1 && pretragaRecievedFromP2 && !GAME_START)
+			{
+				GAME_START = true;
 
+				printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n>> GAME READY TO START!\n\n");
+
+				char msg[BUFFER_SIZE];
+				sprintf_s(msg, "ADMIN = %s\nPLAYER1 = %s\nPLAYER2 = %s\n\nINTERVAL (%d - %d)\nPRETRAGA P1 = %s\nPRETRAGA P2 = %s\n", 
+										admin.ime, player1.ime, player2.ime, intervalMin, intervalMax, P1Pretraga, P2Pretraga);
+
+				printf("%s", msg);
+
+				for (int i = 0; i < last; i++)
+				{
+					
+
+					iResult = send(clientSockets[i], msg, (int)strlen(msg), 0);
+
+					if (iResult == SOCKET_ERROR)
+					{
+						printf("send failed with error: %d\n", WSAGetLastError());
+						closesocket(clientSockets[i]);
+						WSACleanup();
+						return 1;
+					}
+				}
+
+
+
+				_getch();
+			}
+			// ovde proveri da li je spremna igra za pocetak
 			continue;
 		}
 		// prihvatanje klijenata
@@ -372,6 +407,8 @@ int main()
 									printf("\nMessage received from player1:\n");
 									strcpy(player1.ime, dataBuffer);
 									printf("Log>> player1, username = %s\n", player1.ime);
+
+									usernameRecievedFromP1 = true;
 								}
 								// username primljen, na redu je odabir pretrage
 								// obradi odabir pretrage, sacuvaj ga, pa ga salji kad bude GAMESTARTREADY
@@ -386,22 +423,36 @@ int main()
 									if (strcmp(dataBuffer, "1") == 0)
 									{
 										strcpy(P1Pretraga, "Binarna");
+										strcpy(P2Pretraga, "Linearna");
 									}
 									// ako je PLAYER1 odabrao linearnu pretragu, znaci da PLAYER2 dobija binarnu pretragu
 									else if (strcmp(dataBuffer, "2") == 0)
 									{
 										strcpy(P1Pretraga, "Linearna(Front)");
+										strcpy(P2Pretraga, "Binarna");
 									}
 									else
 									{
 										strcpy(P1Pretraga, "Linearna(Back)");
+										strcpy(P2Pretraga, "Binarna");
 									}
 
+									int tempResult = send(clientSockets[i + 1], P2Pretraga, (int)strlen(P2Pretraga), 0);
+									//// Check result of send function
+									if (tempResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[i]);
+										WSACleanup();
+										return 1;
+									}
 
+									pretragaRecievedFromP1 = true;
 								}
 							}
-							else if (i == 2) // PLAYER2 username unet
+							else if (i == 2) // PLAYER2 
 							{
+								// ako nije primljen username
 								if (!usernameRecievedFromP2)
 								{
 									dataBuffer[iResult] = '\0';
@@ -409,34 +460,38 @@ int main()
 
 									strcpy(player2.ime, dataBuffer);
 									printf("Log>> player2, username = %s\n", player2.ime);
+
+									usernameRecievedFromP2 = true;
 								}
+								// ako jeste primljen, sledeca poruka koju prima je : ILI odabir koja linearna pretraga ILI potvrda binarne pretrage
 								else
 								{
+									dataBuffer[iResult] = '\0';
+									printf("\nMessage received from player2: %s\n", dataBuffer);
+
+									if (strcmp(dataBuffer, "0") == 0)
+									{
+										strcpy(P2Pretraga, "Binarna");
+									}
+									else if (strcmp(dataBuffer, "1") == 0)
+									{
+										strcpy(P2Pretraga, "Linearna(Front)");
+									}
+									else
+									{
+										strcpy(P2Pretraga, "Linearna(Back)");
+									}
+
+									pretragaRecievedFromP2 = true;
 
 								}
-								
-
 								
 							}
 						//}
-						
-
-						
-
-						//primljenoj poruci u memoriji pristupiti preko pokazivaca tipa (studentInfo *)
-						//jer znamo format u kom je poruka poslata a to je struct studentInfo
-						/*student = (studentInfo*)dataBuffer;
-
-						printf("Ime i prezime: %s %s  \n", student->ime, student->prezime);
-
-						printf("Poeni studenta: %d  \n", ntohs(student->poeni));
-						printf("_______________________________  \n");*/
-
-						/*igrac = (igracInfo*)dataBuffer;
-						printf("Ime igraca: %s", igrac->ime);
-						igraciCounter++;*/
+					
 
 					}
+					// DODATI AKO SE DISKONEKTUJE ADMIN ILI P1, DA SLEDECI UDJE NA NJIHOVO MESTO A NE KAO PL2
 					else if (iResult == 0)
 					{
 						// connection was closed gracefully
@@ -476,54 +531,54 @@ int main()
 
 			//dodati da kada se treci klijent uloguje igra moze da pocne
 			
-			if (igraciCounter == 3)
-			{
-				sprintf(dataBuffer, "Igra moze da pocne. Prvi igrac (ime) bira broj.");
-				for (int i = 0; i < last; i++)
-				{
+			//if (igraciCounter == 3)
+			//{
+			//	sprintf(dataBuffer, "Igra moze da pocne. Prvi igrac (ime) bira broj.");
+			//	for (int i = 0; i < last; i++)
+			//	{
 
-					// Send message to clients using connected socket
-					iResult = send(clientSockets[i], dataBuffer, (int)strlen(dataBuffer), 0);
-
-
-					// Check result of send function
-					if (iResult == SOCKET_ERROR)
-					{
-						printf("send failed with error: %d\n", WSAGetLastError());
-						//shutdown(clientSockets[i], SD_BOTH);
-						closesocket(clientSockets[i]);
-
-						//break;
-						WSACleanup();
-						return 1;
-					}
-
-					memset(dataBuffer, 0, BUFFER_SIZE); //pokusala sam da dobijem prvog klijenta
-					snprintf(dataBuffer, BUFFER_SIZE, "%d", i);
-					iResult = send(clientSockets[i], dataBuffer, strlen(dataBuffer), 0);
-				}
+			//		// Send message to clients using connected socket
+			//		iResult = send(clientSockets[i], dataBuffer, (int)strlen(dataBuffer), 0);
 
 
-				/*int selectResult = select(0, NULL, &writefds, NULL, NULL);
+			//		// Check result of send function
+			//		if (iResult == SOCKET_ERROR)
+			//		{
+			//			printf("send failed with error: %d\n", WSAGetLastError());
+			//			//shutdown(clientSockets[i], SD_BOTH);
+			//			closesocket(clientSockets[i]);
 
-				if (selectResult == SOCKET_ERROR)
-				{
-					printf("Select failed with error: %d\n", WSAGetLastError());
-					closesocket(listenSocket);
-					WSACleanup();
-					return 1;
-				}
-				else if (selectResult == 0) // timeout expired
-				{
-					if (_kbhit()) //check if some key is pressed
-					{
-						_getch();
-						printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
-					}
-					continue;
-				}
-				*/
-			}
+			//			//break;
+			//			WSACleanup();
+			//			return 1;
+			//		}
+
+			//		memset(dataBuffer, 0, BUFFER_SIZE); //pokusala sam da dobijem prvog klijenta
+			//		snprintf(dataBuffer, BUFFER_SIZE, "%d", i);
+			//		iResult = send(clientSockets[i], dataBuffer, strlen(dataBuffer), 0);
+			//	}
+
+
+			//	/*int selectResult = select(0, NULL, &writefds, NULL, NULL);
+
+			//	if (selectResult == SOCKET_ERROR)
+			//	{
+			//		printf("Select failed with error: %d\n", WSAGetLastError());
+			//		closesocket(listenSocket);
+			//		WSACleanup();
+			//		return 1;
+			//	}
+			//	else if (selectResult == 0) // timeout expired
+			//	{
+			//		if (_kbhit()) //check if some key is pressed
+			//		{
+			//			_getch();
+			//			printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
+			//		}
+			//		continue;
+			//	}
+			//	*/
+			//}
 			
 		
 	
