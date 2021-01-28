@@ -33,8 +33,12 @@ enum Znak { manje, vece, jednako }; // mozda ovako
 
 bool readyForGame = false;
 
-
+#pragma region FUNKCIJE
 void WSAInitialization();
+int Binary(int intervalMin, int intervalMax);
+int LinearFront(int intervalMin);
+int LinearBack(int intervalMax);
+#pragma endregion
 
 // TCP client that use non-blocking sockets
 int main()
@@ -398,25 +402,6 @@ int main()
 			closesocket(connectSocket);
 		}		
 
-		
-
-		/*while (!readyForGame)
-		{
-			Sleep(1000);
-			printf("Waiting for players...");
-		}*/
-
-		// SLANJE ODABRANE PRETRAGE
-		if (player1)
-		{
-			
-		}
-
-		while (true)
-		{
-			
-		
-		}
 
 		// Shutdown the connection since we're done
 		iResult = shutdown(connectSocket, SD_BOTH);
@@ -454,6 +439,23 @@ void WSAInitialization()
 		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
 		return;
 	}
+}
+
+int Binary(int intervalMin, int intervalMax)
+{
+	int retVal = 0;
+
+	return retVal;
+}
+
+int LinearFront(int intervalMin)
+{
+	return intervalMin;
+}
+
+int LinearBack(int intervalMax)
+{
+	return intervalMax;
 }
 
 #pragma endregion
