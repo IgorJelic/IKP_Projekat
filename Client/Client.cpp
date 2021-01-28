@@ -283,6 +283,30 @@ int main()
 		}
 		case player2:
 		{
+			iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+			if (iResult > 0)
+			{
+				dataBuffer[iResult] = '\0';
+				printf("Message received from server:\n");
+				printf(">>\t%s\n", dataBuffer);
+				printf("_______________________________  \n");
+
+
+
+
+			}
+			else if (iResult == 0)
+			{
+				// connection was closed gracefully
+				printf("Connection with server closed.\n");
+				closesocket(connectSocket);
+			}
+			else
+			{
+				// there was an error during recv
+				printf("recv failed with error: %d\n", WSAGetLastError());
+				closesocket(connectSocket);
+			}
 
 			break;
 		}

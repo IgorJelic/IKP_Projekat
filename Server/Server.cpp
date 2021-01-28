@@ -57,6 +57,8 @@ int main()
 	// PLAYERS PROMENLJIVE
 	bool usernameRecievedFromP1 = false;
 	bool usernameRecievedFromP2 = false;
+	bool pretragaRecievedFromP1 = false;
+	bool pretragaRecievedFromP2 = false;
 	char P1Pretraga[BUFFER_SIZE];
 	char P2Pretraga[BUFFER_SIZE];
 
@@ -309,8 +311,8 @@ int main()
 					if (iResult > 0)
 					{
 						// AKO NISU SVI USERNAMEOVI PRIMLJENI
-						if (!AllUsernamesRecieved(&admin, &player1, &player2))
-						{
+						//if (!AllUsernamesRecieved(&admin, &player1, &player2))
+						//{
 							if (i == 0)	// ADMIN
 							{
 								// ako nije primljen USERNAME admina
@@ -380,69 +382,43 @@ int main()
 									printf(">>\t%s\n", dataBuffer);
 									printf("_______________________________  \n");
 
+									// ako je PLAYER1 odabrao binarnu pretragu, PLAYER2 ima izbor da bira koju od dve linearne varijante zeli
 									if (strcmp(dataBuffer, "1") == 0)
 									{
-										searchP1 = binarna;
+										strcpy(P1Pretraga, "Binarna");
 									}
+									// ako je PLAYER1 odabrao linearnu pretragu, znaci da PLAYER2 dobija binarnu pretragu
 									else if (strcmp(dataBuffer, "2") == 0)
 									{
-										searchP1 = linearna_od_napred;
+										strcpy(P1Pretraga, "Linearna(Front)");
 									}
 									else
 									{
-										searchP1 = linearna_od_nazad;
+										strcpy(P1Pretraga, "Linearna(Back)");
 									}
+
+
 								}
-
-								
-
-								//if (!AllUsernamesRecieved(&admin, &player1, &player2))
-								//{
-								//	char message[] = "Waiting for other clients to LogIn...";
-								//	iResult = send(clientSockets[i], message, (int)strlen(message), 0);
-
-								//	//// Check result of send function
-								//	if (iResult == SOCKET_ERROR)
-								//	{
-								//		printf("send failed with error: %d\n", WSAGetLastError());
-								//		closesocket(clientSockets[i]);
-								//		WSACleanup();
-								//		return 1;
-								//	}
-								//}
-								//else
-								//{
-								//	
-								//}
 							}
 							else if (i == 2) // PLAYER2 username unet
 							{
-								dataBuffer[iResult] = '\0';
-								printf("\nMessage received from player2:\n");
-
-								strcpy(player2.ime, dataBuffer);
-								printf("Log>> player2, username = %s\n", player2.ime);
-
-								if (!AllUsernamesRecieved(&admin, &player1, &player2))
+								if (!usernameRecievedFromP2)
 								{
-									char message[] = "Waiting for other clients to LogIn...";
-									iResult = send(clientSockets[i], message, (int)strlen(message), 0);
+									dataBuffer[iResult] = '\0';
+									printf("\nMessage received from player2:\n");
 
-									//// Check result of send function
-									if (iResult == SOCKET_ERROR)
-									{
-										printf("send failed with error: %d\n", WSAGetLastError());
-										closesocket(clientSockets[i]);
-										WSACleanup();
-										return 1;
-									}
+									strcpy(player2.ime, dataBuffer);
+									printf("Log>> player2, username = %s\n", player2.ime);
 								}
 								else
 								{
 
 								}
+								
+
+								
 							}
-						}
+						//}
 						
 
 						
