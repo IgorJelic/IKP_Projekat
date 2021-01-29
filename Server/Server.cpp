@@ -30,6 +30,12 @@ struct igracInfo
 	int broj_pokusaja = 0;
 };
 
+struct Interval
+{
+	int min;
+	int max;
+};
+
 #pragma region FUNKCIJE
 void WSAInitialization();
 bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2);
@@ -40,6 +46,7 @@ bool AllUsernamesRecieved(igracInfo* admin, igracInfo* p1, igracInfo* p2);
 int main()
 {
 	bool GAME_START = false;
+	bool GAME_OVER = false;
 
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET deniedSocket = INVALID_SOCKET;
@@ -53,8 +60,9 @@ int main()
 	// ADMIN PROMENLJIVE
 	bool usernameRecievedFromAdmin = false;
 	bool intervalRecievedFromAdmin = false;
-	int intervalMin;
-	int intervalMax;
+	//int intervalMin;
+	//int intervalMax;
+	Interval interval = { 0 };
 
 	// PLAYERS PROMENLJIVE
 	bool usernameRecievedFromP1 = false;
@@ -144,9 +152,6 @@ int main()
 #pragma endregion
 
 
-	igracInfo *igrac;
-	int igraciCounter = 0;
-
 	while (true)
 	{
 		// initialize socket set
@@ -163,7 +168,7 @@ int main()
 
 		// wait for events on set						  &timeVal
 		//int selectResult = select(0, &readfds, NULL, NULL, NULL);
-		int selectResult = select(0, &readfds, NULL, NULL, &timeVal); //mozda na ovu foru na svakih sekund da proverava da li je game ready to start?
+		int selectResult = select(0, &readfds, NULL, NULL, &timeVal); //na svakih sekund server proverava da li je game ready to start?
 
 		if (selectResult == SOCKET_ERROR)
 		{
@@ -172,6 +177,7 @@ int main()
 			WSACleanup();
 			return 1;
 		}
+		// READY TO START
 		// na svakih timeVal sekundi (1sec), proveri da li je game ready to play
 		else if (selectResult == 0) // timeout expired
 		{
@@ -183,14 +189,12 @@ int main()
 
 				char msg[BUFFER_SIZE];
 				sprintf_s(msg, "ADMIN = %s\nPLAYER1 = %s\nPLAYER2 = %s\n\nINTERVAL (%d - %d)\nPRETRAGA P1 = %s\nPRETRAGA P2 = %s\n", 
-										admin.ime, player1.ime, player2.ime, intervalMin, intervalMax, P1Pretraga, P2Pretraga);
+										admin.ime, player1.ime, player2.ime, interval.min, interval.max, P1Pretraga, P2Pretraga);
 
 				printf("%s", msg);
-
+				// SLANJE SVIMA PORUKE KOJA SADRZI INFORMACIJE O IGRACIMA I ELEMENTIMA IGRE
 				for (int i = 0; i < last; i++)
 				{
-					
-
 					iResult = send(clientSockets[i], msg, (int)strlen(msg), 0);
 
 					if (iResult == SOCKET_ERROR)
@@ -202,9 +206,23 @@ int main()
 					}
 				}
 
+				//sprintf_s(msg, "%d:%d", interval.min, interval.max);  (int)strlen(msg)
+				// 		iResult = send( connectSocket, (char*) &student, (int)sizeof(studentInfo), 0 );
 
+				// SLANJE INTERVALA KLIJENTIMA
+				for (int i = 1; i < last; i++)
+				{
+					iResult = send(clientSockets[i], (char*) &interval, (int)sizeof(interval), 0);
 
-				_getch();
+					if (iResult == SOCKET_ERROR)
+					{
+						printf("send failed with error: %d\n", WSAGetLastError());
+						closesocket(clientSockets[i]);
+						WSACleanup();
+						return 1;
+					}
+				}
+				//_getch();
 			}
 			continue;
 		}
@@ -243,7 +261,8 @@ int main()
 
 					if (last == 0)
 					{
-						iResult = send(clientSockets[last], "Welcome! You are admin!", 23, 0);
+						char msg[] = "Welcome! You are admin!";
+						iResult = send(clientSockets[last], msg, (int)strlen(msg), 0);
 
 						//// Check result of send function
 						if (iResult == SOCKET_ERROR)
@@ -258,7 +277,7 @@ int main()
 					{
 						char msg[] = "";
 						sprintf(msg, "Welcome, Player %d!", last);
-						iResult = send(clientSockets[last], msg, 19, 0);
+						iResult = send(clientSockets[last], msg, (int)strlen(msg), 0);
 
 						//// Check result of send function
 						if (iResult == SOCKET_ERROR)
@@ -329,6 +348,7 @@ int main()
 		else
 		{
 			// prijem poruke
+			// ako je GAME_START, vrti petlju sve dok nije GAME_OVER
 			// prvo primamo poruke dokle god svi igraci ne unesu username!
 			// posle toga primamo interval od ADMIN klijenta
 			// za to vreme player1 bira kojom ce pretragom da se sluzi dok player2 dobija suprotan izbor pretrage
@@ -341,12 +361,129 @@ int main()
 				if (FD_ISSET(clientSockets[i], &readfds))
 				{
 					iResult = recv(clientSockets[i], dataBuffer, BUFFER_SIZE, 0);
-					// poruka je primljena
+					// PORUKA JE PRIMLJENA
 					if (iResult > 0)
 					{
-						// AKO NISU SVI USERNAMEOVI PRIMLJENI
-						//if (!AllUsernamesRecieved(&admin, &player1, &player2))
-						//{
+						// DOK TRAJE IGRA
+						if (GAME_START == true && GAME_OVER == false)
+						{
+							
+							#pragma region GAME
+							switch (i)
+							{
+									// ADMIN, prima odgovor za odgovarajuceg igraca(key), oduzmi KEY iz odgovora i prosledi odgovor do odgovarajuceg igraca
+								case 0:
+								{
+									// VAL:KEY
+									char delimiter = ':';
+									dataBuffer[iResult] = '\0';
+
+									//printf("\nGAME>> ADMIN [%s]", dataBuffer);
+
+									std::string sValKey = dataBuffer;
+									std::string sVal = sValKey.substr(0, sValKey.find(delimiter));	// VALUE koju saljem odredjenom klijentu
+									std::string sKey = sValKey.substr(sValKey.find(delimiter) + 1);
+									char csKey[BUFFER_SIZE];
+									char csVal[BUFFER_SIZE];
+									strcpy(csKey, sKey.c_str());
+									strcpy(csVal, sVal.c_str());
+
+									printf("\nGAME>> ADMIN [%s:%s]", csVal, csKey);
+
+									// prosledi vrednost igracu 1
+									if (strcmp(csKey, "1") == 0)
+									{
+										int tempResult = send(clientSockets[1], csVal, (int)strlen(csVal), 0);
+										//// Check result of send function
+										if (tempResult == SOCKET_ERROR)
+										{
+											printf("send failed with error: %d\n", WSAGetLastError());
+											closesocket(clientSockets[1]);
+											WSACleanup();
+											return 1;
+										}
+									}
+									// prosledi vrednost igracu 2
+									else if (strcmp(csKey, "2") == 0)
+									{
+										int tempResult = send(clientSockets[2], csVal, (int)strlen(csVal), 0);
+										//// Check result of send function
+										if (tempResult == SOCKET_ERROR)
+										{
+											printf("send failed with error: %d\n", WSAGetLastError());
+											closesocket(clientSockets[2]);
+											WSACleanup();
+											return 1;
+										}
+									}
+
+									break;
+								}
+								// PLAYER1, primljena poruka od P1 se samo prosledjuje ADMINU i povecava se broj pokusaja
+								case 1:
+								{
+									dataBuffer[iResult] = '\0';
+
+									int tempResult = send(clientSockets[0], dataBuffer, (int)strlen(dataBuffer), 0);
+									//// Check result of send function
+									if (tempResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[0]);
+										WSACleanup();
+										return 1;
+									}
+
+									player1.broj_pokusaja++;
+									printf("\nGAME>> P1 [%d]", player1.broj_pokusaja);
+
+									//Sleep(10000);
+
+									break;
+								}
+								// PLAYER2, primljena poruka od P2 se samo prosledjuje ADMINU i povecava se broj pokusaja
+								case 2:
+								{
+									char msg[BUFFER_SIZE];
+									dataBuffer[iResult] = '\0';
+
+									strcpy(msg, dataBuffer);
+
+									int tempResult = send(clientSockets[0], msg, (int)strlen(msg), 0);
+									//// Check result of send function
+									if (tempResult == SOCKET_ERROR)
+									{
+										printf("send failed with error: %d\n", WSAGetLastError());
+										closesocket(clientSockets[0]);
+										WSACleanup();
+										return 1;
+									}
+
+									player2.broj_pokusaja++;
+									printf("\nGAME>> P2 [%d]", player2.broj_pokusaja);
+
+									//Sleep(10000);
+
+									break;
+								}
+							}
+
+							#pragma endregion
+							
+						}
+
+
+
+
+
+						if (!GAME_START)
+						{
+
+
+
+							// AKO NISU SVI USERNAMEOVI PRIMLJENI
+							//if (!AllUsernamesRecieved(&admin, &player1, &player2))
+							//{
 							if (i == 0)	// ADMIN
 							{
 								// ako nije primljen USERNAME admina
@@ -358,18 +495,6 @@ int main()
 									printf("Log>> Admin, username = %s\n", admin.ime);
 
 									usernameRecievedFromAdmin = true;
-
-									//char message[] = "Send interval of numbers.";
-									//iResult = send(clientSockets[i], message, (int)strlen(message), 0);
-
-									////// Check result of send function
-									//if (iResult == SOCKET_ERROR)
-									//{
-									//	printf("send failed with error: %d\n", WSAGetLastError());
-									//	closesocket(clientSockets[i]);
-									//	WSACleanup();
-									//	return 1;
-									//}
 
 								}
 								else
@@ -385,17 +510,20 @@ int main()
 										std::string minInterval = s.substr(0, s.find(delimiter));
 										std::string maxInterval = s.substr(s.find(delimiter) + 1);
 
-										intervalMin = std::stoi(minInterval);
-										intervalMax = std::stoi(maxInterval);
-										
-										printf("Log>> Interval za pogadjanje = (%d - %d)\n", intervalMin, intervalMax);
+										interval.min = std::stoi(minInterval);
+										interval.max = std::stoi(maxInterval);
+
+										//intervalMin = std::stoi(minInterval);
+										//intervalMax = std::stoi(maxInterval);
+
+										printf("Log>> Interval za pogadjanje = (%d - %d)\n", interval.min, interval.max);
 
 										intervalRecievedFromAdmin = true;
 									}
 									// da li treba nesto u slucaju da je interval primljen a da svi igraci jos nisu ulogovani?
 
 								}
-								
+
 							}
 							else if (i == 1) // PLAYER1 
 							{
@@ -414,7 +542,7 @@ int main()
 								else
 								{
 									dataBuffer[iResult] = '\0';
-									
+
 
 									// ako je PLAYER1 odabrao binarnu pretragu, PLAYER2 ima izbor da bira koju od dve linearne varijante zeli
 									if (strcmp(dataBuffer, "1") == 0)
@@ -486,11 +614,10 @@ int main()
 
 
 								}
-								
-							}
-						//}
-					
 
+							}
+
+						}
 					}
 					// DODATI AKO SE DISKONEKTUJE ADMIN ILI P1, DA SLEDECI UDJE NA NJIHOVO MESTO A NE KAO PL2
 					else if (iResult == 0)
@@ -528,61 +655,7 @@ int main()
 
 			}
 
-		}
-
-			//dodati da kada se treci klijent uloguje igra moze da pocne
-			
-			//if (igraciCounter == 3)
-			//{
-			//	sprintf(dataBuffer, "Igra moze da pocne. Prvi igrac (ime) bira broj.");
-			//	for (int i = 0; i < last; i++)
-			//	{
-
-			//		// Send message to clients using connected socket
-			//		iResult = send(clientSockets[i], dataBuffer, (int)strlen(dataBuffer), 0);
-
-
-			//		// Check result of send function
-			//		if (iResult == SOCKET_ERROR)
-			//		{
-			//			printf("send failed with error: %d\n", WSAGetLastError());
-			//			//shutdown(clientSockets[i], SD_BOTH);
-			//			closesocket(clientSockets[i]);
-
-			//			//break;
-			//			WSACleanup();
-			//			return 1;
-			//		}
-
-			//		memset(dataBuffer, 0, BUFFER_SIZE); //pokusala sam da dobijem prvog klijenta
-			//		snprintf(dataBuffer, BUFFER_SIZE, "%d", i);
-			//		iResult = send(clientSockets[i], dataBuffer, strlen(dataBuffer), 0);
-			//	}
-
-
-			//	/*int selectResult = select(0, NULL, &writefds, NULL, NULL);
-
-			//	if (selectResult == SOCKET_ERROR)
-			//	{
-			//		printf("Select failed with error: %d\n", WSAGetLastError());
-			//		closesocket(listenSocket);
-			//		WSACleanup();
-			//		return 1;
-			//	}
-			//	else if (selectResult == 0) // timeout expired
-			//	{
-			//		if (_kbhit()) //check if some key is pressed
-			//		{
-			//			_getch();
-			//			printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
-			//		}
-			//		continue;
-			//	}
-			//	*/
-			//}
-			
-		
-	
+		}	
 
 	}
 
