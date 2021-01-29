@@ -499,8 +499,6 @@ int main()
 				// igrac 2 prvo salje pa prima odgovor sve dok ne primi TACNO ili GAMEOVER
 				case player2:
 				{
-					bool recieved = false;
-
 					switch (searchP2)
 					{
 						// BINARY
@@ -524,10 +522,9 @@ int main()
 								WSACleanup();
 								return 1;
 							}
-							recieved = false;
+							//recieved = false;
 							#pragma endregion
-							
-							
+
 							#pragma region PRIJEM_ODGOVORA
 							iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 							if (iResult > 0)
@@ -546,6 +543,7 @@ int main()
 								}
 								else if (strcmp(dataBuffer, "TACNO") == 0)
 								{
+									// POBEDNIK = true;
 									GAME_OVER = true;
 								}
 								else if (strcmp(dataBuffer, "GAMEOVER") == 0)
@@ -566,7 +564,7 @@ int main()
 								closesocket(connectSocket);
 							}
 							//Sleep(1000);
-							recieved = true;
+							//recieved = true;
 							#pragma endregion
 
 							break;
@@ -576,7 +574,7 @@ int main()
 						{
 							#pragma region SLANJE_POKUSAJA
 							std::string key = ":2";
-							int sendVal = LinearFront(interval->min);
+							int sendVal = LinearFront(intervalPocetak);
 							std::string val = std::to_string(sendVal);
 							val += key;
 
@@ -593,6 +591,7 @@ int main()
 								return 1;
 							}
 							#pragma endregion
+
 							#pragma region PRIJEM_ODGOVORA
 							iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 							if (iResult > 0)
@@ -604,10 +603,11 @@ int main()
 								}*/
 								if (strcmp(dataBuffer, "VECE") == 0)
 								{
-									interval->min = sendVal + 1;
+									intervalPocetak = sendVal + 1;
 								}
 								else if (strcmp(dataBuffer, "TACNO") == 0)
 								{
+									// POBEDNIK = true;
 									GAME_OVER = true;
 								}
 								else if (strcmp(dataBuffer, "GAMEOVER") == 0)
@@ -636,7 +636,7 @@ int main()
 						{
 							#pragma region SLANJE_POKUSAJA
 							std::string key = ":2";
-							int sendVal = LinearBack(interval->max);
+							int sendVal = LinearBack(intervalKraj);
 							std::string val = std::to_string(sendVal);
 							val += key;
 
@@ -653,6 +653,7 @@ int main()
 								return 1;
 							}
 							#pragma endregion
+
 							#pragma region PRIJEM_ODGOVORA
 							iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
 							if (iResult > 0)
@@ -660,7 +661,7 @@ int main()
 								dataBuffer[iResult] = '\0'; // MANJE TACNO, zato sto ne moze biti vece jer krece od kraja intervala redom
 								if (strcmp(dataBuffer, "MANJE") == 0)
 								{
-									interval->max = sendVal - 1;
+									intervalKraj = sendVal - 1;
 								}
 								/*if (strcmp(dataBuffer, "VECE") == 0)
 								{
@@ -669,6 +670,7 @@ int main()
 								else if (strcmp(dataBuffer, "TACNO") == 0)
 								{
 									GAME_OVER = true;
+									// POBEDNIK = true;
 								}
 								else if (strcmp(dataBuffer, "GAMEOVER") == 0)
 								{
