@@ -60,6 +60,7 @@ int main()
 	// ADMIN PROMENLJIVE
 	bool usernameRecievedFromAdmin = false;
 	bool intervalRecievedFromAdmin = false;
+	int tacnoCntr = 0;
 	//int intervalMin;
 	//int intervalMax;
 	Interval interval = { 0 };
@@ -364,14 +365,15 @@ int main()
 					// PORUKA JE PRIMLJENA
 					if (iResult > 0)
 					{
+						#pragma region GAME
 						// DOK TRAJE IGRA
 						if (GAME_START == true && GAME_OVER == false)
 						{
 							
-							#pragma region GAME
+							
 							switch (i)
 							{
-									// ADMIN, prima odgovor za odgovarajuceg igraca(key), oduzmi KEY iz odgovora i prosledi odgovor do odgovarajuceg igraca
+								// ADMIN, prima odgovor za odgovarajuceg igraca(key), oduzmi KEY iz odgovora i prosledi odgovor do odgovarajuceg igraca
 								case 0:
 								{
 									// VAL:KEY
@@ -387,6 +389,8 @@ int main()
 									char csVal[BUFFER_SIZE];
 									strcpy(csKey, sKey.c_str());
 									strcpy(csVal, sVal.c_str());
+
+									
 
 									printf("\nGAME>> ADMIN [%s:%s]", csVal, csKey);
 
@@ -414,6 +418,15 @@ int main()
 											closesocket(clientSockets[2]);
 											WSACleanup();
 											return 1;
+										}
+									}
+
+									if (strcmp(csVal, "TACNO") == 0)
+									{
+										tacnoCntr++;
+										if (tacnoCntr > 1)
+										{
+											GAME_OVER = true;
 										}
 									}
 
@@ -466,16 +479,13 @@ int main()
 
 									break;
 								}
-							}
-
-							#pragma endregion
-							
+							}	
 						}
+						#pragma endregion
 
 
 
-
-
+						#pragma region PREPARATION
 						if (!GAME_START)
 						{
 
@@ -618,12 +628,15 @@ int main()
 							}
 
 						}
+						#pragma endregion
+
+						
 					}
 					// DODATI AKO SE DISKONEKTUJE ADMIN ILI P1, DA SLEDECI UDJE NA NJIHOVO MESTO A NE KAO PL2
 					else if (iResult == 0)
 					{
 						// connection was closed gracefully
-						printf("Connection with client (%d) closed.\n", i + 1);
+						printf("\nConnection with client (%d) closed.\n", i + 1);
 						closesocket(clientSockets[i]);
 
 						// sort array and clean last place

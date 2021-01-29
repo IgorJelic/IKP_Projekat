@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
+#include <chrono>
 #include "conio.h"
 
 #pragma comment (lib, "Ws2_32.lib")
@@ -45,6 +46,8 @@ int LinearBack(int intervalMax);
 int main()
 {
 	bool GAME_OVER = false;
+	//bool GAME_OVER_1 = false;
+	//bool GAME_OVER_2 = false;
 
 	SOCKET connectSocket = INVALID_SOCKET;
 	int iResult;
@@ -59,6 +62,7 @@ int main()
 	int adminZamisljenBroj = -1;
 	int adminIntervalPocetak = -1;
 	int adminIntervalKraj = -1;
+	int tacnoCntr = 0;
 
 	int intervalPocetak = -1;
 	int intervalKraj = -1;
@@ -68,6 +72,8 @@ int main()
 	char P2odabirPretrage[BUFFER_SIZE];
 	int P1Pokusaj;
 	int P2Pokusaj;
+	int P1Vreme = 0;
+	int P2Vreme = 0;
 
 
 	#pragma region CONNECTING
@@ -416,7 +422,8 @@ int main()
 		// STAVLJANJE SOKETA U NEBLOKIRAJUCE STANJE
 		//fd_set readfds;
 
-		while (!GAME_OVER)
+		auto t1 = std::chrono::high_resolution_clock::now();
+		while (GAME_OVER == false)
 		{
 			switch (role)
 			{
@@ -442,9 +449,26 @@ int main()
 						char sendMsg[BUFFER_SIZE];
 						if (val == adminZamisljenBroj)
 						{
+							if (strcmp(sKey.c_str(), "1"))
+							{
+								auto t11 = std::chrono::high_resolution_clock::now();
+								auto durationP1 = std::chrono::duration_cast<std::chrono::milliseconds>(t11 - t1).count();
+
+								P1Vreme = (int)durationP1;
+							}
+							else
+							{
+								auto t21 = std::chrono::high_resolution_clock::now();
+								auto durationP2 = std::chrono::duration_cast<std::chrono::milliseconds>(t21 - t1).count();
+
+								P2Vreme = (int)durationP2;
+							}
 							strcpy(sendMsg, "TACNO");
-							// proveri
-							GAME_OVER = true;
+							tacnoCntr++;
+							if (tacnoCntr > 1)
+							{
+								GAME_OVER = true;
+							}							
 						}
 						else if (val < adminZamisljenBroj)
 						{
@@ -491,7 +515,195 @@ int main()
 				{
 					switch (searchP1)
 					{
-						
+						// BINARY
+					case binarna:
+					{
+						#pragma region SLANJE_POKUSAJA
+						std::string key = ":1";
+						int sendVal = Binary(intervalPocetak, intervalKraj);
+						std::string val = std::to_string(sendVal);
+						val += key;
+
+						char msg[BUFFER_SIZE];
+						strcpy(msg, val.c_str());
+
+						int tempResult = send(connectSocket, msg, (int)strlen(msg), 0);
+						//// Check result of send function
+						if (tempResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+							WSACleanup();
+							return 1;
+						}
+#pragma endregion
+
+						#pragma region PRIJEM_ODGOVORA
+						iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+						if (iResult > 0)
+						{
+							dataBuffer[iResult] = '\0'; // MANJE VECE TACNO
+							printf("\nPRIJEM>> %s", dataBuffer);
+							if (strcmp(dataBuffer, "MANJE") == 0)
+							{
+								intervalKraj = sendVal - 1;
+							}
+							else if (strcmp(dataBuffer, "VECE") == 0)
+							{
+								intervalPocetak = sendVal + 1;
+							}
+							else if (strcmp(dataBuffer, "TACNO") == 0)
+							{
+								//POBEDNIK = true;
+								GAME_OVER = true;
+							}
+							else if (strcmp(dataBuffer, "GAMEOVER") == 0)
+							{
+								GAME_OVER = true;
+							}
+						}
+						else if (iResult == 0)
+						{
+							// connection was closed gracefully
+							printf("Connection with server closed.\n");
+							closesocket(connectSocket);
+						}
+						else
+						{
+							// there was an error during recv
+							printf("recv failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+						}
+						#pragma endregion
+
+						break;
+					}
+					// LINEAR FRONT
+					case linearna_od_napred:
+					{
+						#pragma region SLANJE_POKUSAJA
+						std::string key = ":1";
+						int sendVal = LinearFront(intervalPocetak);
+						std::string val = std::to_string(sendVal);
+						val += key;
+
+						char msg[BUFFER_SIZE];
+						strcpy(msg, val.c_str());
+
+						int tempResult = send(connectSocket, msg, (int)strlen(msg), 0);
+						//// Check result of send function
+						if (tempResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+							WSACleanup();
+							return 1;
+						}
+#pragma endregion
+
+						#pragma region PRIJEM_ODGOVORA
+						iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+						if (iResult > 0)
+						{
+							dataBuffer[iResult] = '\0'; // VECE TACNO, zato sto ne moze biti manje jer krece od pocetka intervala redom
+							printf("\nPRIJEM>> %s", dataBuffer);
+							/*if (strcmp(dataBuffer, "MANJE") == 0)
+							{
+								interval->max = sendVal - 1;
+							}*/
+							if (strcmp(dataBuffer, "VECE") == 0)
+							{
+								intervalPocetak = sendVal + 1;
+							}
+							else if (strcmp(dataBuffer, "TACNO") == 0)
+							{
+								// POBEDNIK = true;
+								GAME_OVER = true;
+							}
+							else if (strcmp(dataBuffer, "GAMEOVER") == 0)
+							{
+								GAME_OVER = true;
+							}
+						}
+						else if (iResult == 0)
+						{
+							// connection was closed gracefully
+							printf("Connection with server closed.\n");
+							closesocket(connectSocket);
+						}
+						else
+						{
+							// there was an error during recv
+							printf("recv failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+						}
+						#pragma endregion
+
+						break;
+					}
+					// LINEAR BACK
+					case linearna_od_nazad:
+					{
+						#pragma region SLANJE_POKUSAJA
+						std::string key = ":1";
+						int sendVal = LinearBack(intervalKraj);
+						std::string val = std::to_string(sendVal);
+						val += key;
+
+						char msg[BUFFER_SIZE];
+						strcpy(msg, val.c_str());
+
+						int tempResult = send(connectSocket, msg, (int)strlen(msg), 0);
+						//// Check result of send function
+						if (tempResult == SOCKET_ERROR)
+						{
+							printf("send failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+							WSACleanup();
+							return 1;
+						}
+						#pragma endregion
+
+						#pragma region PRIJEM_ODGOVORA
+						iResult = recv(connectSocket, dataBuffer, BUFFER_SIZE, 0);
+						if (iResult > 0)
+						{
+							dataBuffer[iResult] = '\0'; // MANJE TACNO, zato sto ne moze biti vece jer krece od kraja intervala redom
+							printf("\nPRIJEM>> %s", dataBuffer);
+							if (strcmp(dataBuffer, "MANJE") == 0)
+							{
+								intervalKraj = sendVal - 1;
+							}
+							/*if (strcmp(dataBuffer, "VECE") == 0)
+							{
+								interval->min = sendVal + 1;
+							}*/
+							else if (strcmp(dataBuffer, "TACNO") == 0)
+							{
+								//POBEDNIK = true;
+								GAME_OVER = true;
+							}
+							else if (strcmp(dataBuffer, "GAMEOVER") == 0)
+							{
+								GAME_OVER = true;
+							}
+						}
+						else if (iResult == 0)
+						{
+							// connection was closed gracefully
+							printf("Connection with server closed.\n");
+							closesocket(connectSocket);
+						}
+						else
+						{
+							// there was an error during recv
+							printf("recv failed with error: %d\n", WSAGetLastError());
+							closesocket(connectSocket);
+						}
+						#pragma endregion
+
+						break;
+					}
 					}
 
 					break;
@@ -597,6 +809,7 @@ int main()
 							if (iResult > 0)
 							{
 								dataBuffer[iResult] = '\0'; // VECE TACNO, zato sto ne moze biti manje jer krece od pocetka intervala redom
+								printf("\nPRIJEM>> %s", dataBuffer);
 								/*if (strcmp(dataBuffer, "MANJE") == 0)
 								{
 									interval->max = sendVal - 1;
@@ -659,6 +872,7 @@ int main()
 							if (iResult > 0)
 							{
 								dataBuffer[iResult] = '\0'; // MANJE TACNO, zato sto ne moze biti vece jer krece od kraja intervala redom
+								printf("\nPRIJEM>> %s", dataBuffer);
 								if (strcmp(dataBuffer, "MANJE") == 0)
 								{
 									intervalKraj = sendVal - 1;
@@ -698,43 +912,33 @@ int main()
 					break;
 				}
 			}
+		}
+		auto t2 = std::chrono::high_resolution_clock::now();
+		// ili mikrosekundi, vidi proveri
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
-
-			
-			//FD_ZERO(&readfds);
-			//FD_SET(connectSocket, &readfds);
-
-			//int selectResult = select(0, &readfds, NULL, NULL, NULL);
-
-			//if (selectResult == SOCKET_ERROR)
-			//{
-			//	printf("Select failed with error: %d\n", WSAGetLastError());
-			//	closesocket(connectSocket);
-			//	WSACleanup();
-			//	return 1;
-			//}
-			//else if (selectResult == 0) // timeout expired
-			//{
-
-			//	continue;
-			//}
-			//else if (FD_ISSET(connectSocket, &readfds))
-			//{
-			//	switch (role)
-			//	{
-			//	case admin:
-			//		break;
-			//	case player1:
-			//		break;
-			//	case player2:
-			//		break;
-			//	default:
-			//		break;
-			//	}
-			//}
-		}	
+		
 
 		printf("\n\n>> GAME OVER...");
+		/*if (role != admin)
+		{
+			printf("\n\n\n>> TIME = %d milisekundi.", (int)duration);
+		}*/
+		if (role == admin)
+		{
+			printf("\n\n\n>> RESULTS =\tP1: %d milisekundi.\n\t\tP2: %d milisekundi.\n\n", P1Vreme, P2Vreme);
+			if (P1Vreme < P2Vreme)
+			{
+				printf(">> P1 WINNER!\n");
+			}
+			else
+			{
+				printf(">> P2 WINNER!\n");
+			}
+		}
+
+
+		printf("\n\nPress any key to finish...");
 		getchar();
 
 		// Shutdown the connection since we're done
@@ -757,8 +961,6 @@ int main()
 		// Deinitialize WSA library
 		WSACleanup();
 	}
-
-	
 
 	return 0;
 }
