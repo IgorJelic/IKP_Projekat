@@ -61,8 +61,6 @@ int main()
 	bool usernameRecievedFromAdmin = false;
 	bool intervalRecievedFromAdmin = false;
 	int tacnoCntr = 0;
-	//int intervalMin;
-	//int intervalMax;
 	Interval interval = { 0 };
 
 	// PLAYERS PROMENLJIVE
@@ -380,8 +378,6 @@ int main()
 									char delimiter = ':';
 									dataBuffer[iResult] = '\0';
 
-									//printf("\nGAME>> ADMIN [%s]", dataBuffer);
-
 									std::string sValKey = dataBuffer;
 									std::string sVal = sValKey.substr(0, sValKey.find(delimiter));	// VALUE koju saljem odredjenom klijentu
 									std::string sKey = sValKey.substr(sValKey.find(delimiter) + 1);
@@ -389,8 +385,6 @@ int main()
 									char csVal[BUFFER_SIZE];
 									strcpy(csKey, sKey.c_str());
 									strcpy(csVal, sVal.c_str());
-
-									
 
 									printf("\nGAME>> ADMIN [%s:%s]", csVal, csKey);
 
@@ -483,17 +477,9 @@ int main()
 						}
 						#pragma endregion
 
-
-
 						#pragma region PREPARATION
 						if (!GAME_START)
 						{
-
-
-
-							// AKO NISU SVI USERNAMEOVI PRIMLJENI
-							//if (!AllUsernamesRecieved(&admin, &player1, &player2))
-							//{
 							if (i == 0)	// ADMIN
 							{
 								// ako nije primljen USERNAME admina
@@ -505,7 +491,6 @@ int main()
 									printf("Log>> Admin, username = %s\n", admin.ime);
 
 									usernameRecievedFromAdmin = true;
-
 								}
 								else
 								{
@@ -523,15 +508,10 @@ int main()
 										interval.min = std::stoi(minInterval);
 										interval.max = std::stoi(maxInterval);
 
-										//intervalMin = std::stoi(minInterval);
-										//intervalMax = std::stoi(maxInterval);
-
 										printf("Log>> Interval za pogadjanje = (%d - %d)\n", interval.min, interval.max);
 
 										intervalRecievedFromAdmin = true;
 									}
-									// da li treba nesto u slucaju da je interval primljen a da svi igraci jos nisu ulogovani?
-
 								}
 
 							}
@@ -629,10 +609,7 @@ int main()
 
 						}
 						#pragma endregion
-
-						
 					}
-					// DODATI AKO SE DISKONEKTUJE ADMIN ILI P1, DA SLEDECI UDJE NA NJIHOVO MESTO A NE KAO PL2
 					else if (iResult == 0)
 					{
 						// connection was closed gracefully

@@ -46,8 +46,6 @@ int LinearBack(int intervalMax);
 int main()
 {
 	bool GAME_OVER = false;
-	//bool GAME_OVER_1 = false;
-	//bool GAME_OVER_2 = false;
 
 	SOCKET connectSocket = INVALID_SOCKET;
 	int iResult;
@@ -169,17 +167,14 @@ int main()
 		if (s.rfind("Welcome! You are admin!", 0) == 0)
 		{
 			role = admin;
-			//admin = true;
 		}
 		else if (s.rfind("Welcome, Player 1!", 0) == 0)
 		{
 			role = player1;
-			//player1 = true;
 		}
 		else if (s.rfind("Welcome, Player 2!", 0) == 0)
 		{
 			role = player2;
-			//player2 = true;
 		}
 		
 
@@ -250,9 +245,6 @@ int main()
 							}
 						}
 					}
-
-					//interval->min = adminIntervalPocetak;
-					//interval->max = adminIntervalKraj;
 
 					char msg[BUFFER_SIZE];
 					sprintf_s(msg, "%d:%d", adminIntervalPocetak, adminIntervalKraj);
@@ -419,9 +411,8 @@ int main()
 		printf("\n\n>> Game starts in 5 seconds...");
 		Sleep(5000);
 
-		// STAVLJANJE SOKETA U NEBLOKIRAJUCE STANJE
-		//fd_set readfds;
-
+		#pragma region GAME_START
+		// palim tajmer
 		auto t1 = std::chrono::high_resolution_clock::now();
 		while (GAME_OVER == false)
 		{
@@ -914,16 +905,11 @@ int main()
 			}
 		}
 		auto t2 = std::chrono::high_resolution_clock::now();
-		// ili mikrosekundi, vidi proveri
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-
+		#pragma endregion
 		
 
 		printf("\n\n>> GAME OVER...");
-		/*if (role != admin)
-		{
-			printf("\n\n\n>> TIME = %d milisekundi.", (int)duration);
-		}*/
 		if (role == admin)
 		{
 			printf("\n\n\n>> RESULTS =\tP1: %d milisekundi.\n\t\tP2: %d milisekundi.\n\n", P1Vreme, P2Vreme);
